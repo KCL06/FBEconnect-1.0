@@ -14,7 +14,7 @@ export default function Footer() {
               <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-emerald-500 rounded-full flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
                 <Leaf className="w-5 h-5 text-white" />
               </div>
-              <span className="text-2xl font-bold text-white">AgroLink</span>
+              <span className="text-2xl font-bold text-white">FBEconnect</span>
             </Link>
             <p className="text-emerald-300 text-sm leading-relaxed max-w-md mb-4">
               Connecting farmers, buyers, and agricultural experts to create a sustainable
@@ -74,8 +74,8 @@ export default function Footer() {
             <ul className="space-y-3">
               <li className="flex items-start gap-2 text-emerald-300 text-sm">
                 <Mail className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                <a href="mailto:support@agrolink.com" className="hover:text-white transition-colors">
-                  support@agrolink.com
+                <a href="mailto:support@fbeconnect.com" className="hover:text-white transition-colors">
+                  support@fbeconnect.com
                 </a>
               </li>
               <li className="flex items-start gap-2 text-emerald-300 text-sm">
@@ -109,7 +109,7 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="border-t border-emerald-800 mt-10 pt-6 flex flex-col md:flex-row items-center justify-between gap-3">
           <p className="text-emerald-400 text-sm">
-            &copy; {currentYear} AgroLink. All rights reserved. Empowering agricultural communities.
+            &copy; {currentYear} FBEconnect. All rights reserved. Empowering agricultural communities.
           </p>
           <div className="flex gap-4">
             <a href="#" className="text-emerald-400 hover:text-white text-sm transition-colors">

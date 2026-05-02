@@ -1,6 +1,8 @@
 import { ShoppingCart, Heart, Search, Filter, Star, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Link } from "react-router";
+import { useCart } from "../context/CartContext";
 
 const initialListings = [
   {
@@ -11,7 +13,8 @@ const initialListings = [
     location: "Nairobi",
     rating: 4.8,
     reviews: 45,
-    image: "https://images.unsplash.com/photo-1767978529638-ff1faefa00c5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxvcmdhbmljJTIwdG9tYXRvZXMlMjBoYXJ2ZXN0fGVufDF8fHx8MTc3MzMwNzM5MXww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+    category: "Vegetables",
+    image: "https://images.unsplash.com/photo-1767978529638-ff1faefa00c5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxvcmdhbmljJTIwdG9tYXRvZXMlMjBoYXJ2ZXN0fGVufDF8fHx8MTc3MzMwNzM5MXww&ixlib=rb-4.1.0&q=80&w=1080",
     inStock: true,
   },
   {
@@ -22,7 +25,8 @@ const initialListings = [
     location: "Nakuru",
     rating: 4.9,
     reviews: 78,
-    image: "https://images.unsplash.com/photo-1719532520242-a809140b313d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkYWlyeSUyMGZhcm0lMjBmcmVzaCUyMG1pbGt8ZW58MXx8fHwxNzczMjE2NTkyfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+    category: "Dairy",
+    image: "https://images.unsplash.com/photo-1719532520242-a809140b313d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkYWlyeSUyMGZhcm0lMjBmcmVzaCUyMG1pbGt8ZW58MXx8fHwxNzczMjE2NTkyfDA&ixlib=rb-4.1.0&q=80&w=1080",
     inStock: true,
   },
   {
@@ -33,7 +37,8 @@ const initialListings = [
     location: "Eldoret",
     rating: 4.7,
     reviews: 32,
-    image: "https://images.unsplash.com/photo-1741112480266-62def497fa27?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzd2VldCUyMHBvdGF0b2VzJTIwaGFydmVzdHxlbnwxfHx8fDE3NzMzMDczOTJ8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+    category: "Vegetables",
+    image: "https://images.unsplash.com/photo-1741112480266-62def497fa27?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzd2VldCUyMHBvdGF0b2VzJTIwaGFydmVzdHxlbnwxfHx8fDE3NzMzMDczOTJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
     inStock: true,
   },
   {
@@ -44,7 +49,8 @@ const initialListings = [
     location: "Kitale",
     rating: 4.6,
     reviews: 56,
-    image: "https://images.unsplash.com/photo-1571342574841-80ba1dfc8d4f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3JuJTIwbWFpemUlMjBoYXJ2ZXN0fGVufDF8fHx8MTc3MzMwNzM5Mnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+    category: "Grains",
+    image: "https://images.unsplash.com/photo-1571342574841-80ba1dfc8d4f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3JuJTIwbWFpemUlMjBoYXJ2ZXN0fGVufDF8fHx8MTc3MzMwNzM5Mnww&ixlib=rb-4.1.0&q=80&w=1080",
     inStock: true,
   },
   {
@@ -55,7 +61,8 @@ const initialListings = [
     location: "Naivasha",
     rating: 4.9,
     reviews: 91,
-    image: "https://images.unsplash.com/photo-1555447740-6a812da65e7f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxncmVlbiUyMGNhYmJhZ2UlMjB2ZWdldGFibGVzfGVufDF8fHx8MTc3MzMwNzM5Mnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+    category: "Vegetables",
+    image: "https://images.unsplash.com/photo-1555447740-6a812da65e7f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxncmVlbiUyMGNhYmJhZ2UlMjB2ZWdldGFibGVzfGVufDF8fHx8MTc3MzMwNzM5Mnww&ixlib=rb-4.1.0&q=80&w=1080",
     inStock: true,
   },
   {
@@ -66,26 +73,137 @@ const initialListings = [
     location: "Kiambu",
     rating: 5.0,
     reviews: 124,
-    image: "https://images.unsplash.com/photo-1664339307400-9c22e5f44496?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmcmVzaCUyMGJyb3duJTIwZWdnc3xlbnwxfHx8fDE3NzMzMDczOTJ8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+    category: "Poultry",
+    image: "https://images.unsplash.com/photo-1664339307400-9c22e5f44496?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmcmVzaCUyMGJyb3duJTIwZWdnc3xlbnwxfHx8fDE3NzMzMDczOTJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+    inStock: true,
+  },
+  {
+    id: 7,
+    seller: "Orchard Hills",
+    product: "Fresh Mangoes",
+    price: "KES 50/piece",
+    location: "Mombasa",
+    rating: 4.8,
+    reviews: 63,
+    category: "Fruits",
+    image: "https://images.unsplash.com/photo-1601493700631-2b16ec4b4716?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
+    inStock: true,
+  },
+  {
+    id: 8,
+    seller: "Tropical Farms",
+    product: "Ripe Bananas",
+    price: "KES 10/piece",
+    location: "Kisumu",
+    rating: 4.5,
+    reviews: 38,
+    category: "Fruits",
+    image: "https://images.unsplash.com/photo-1603833665858-e61d17a86224?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
+    inStock: true,
+  },
+  {
+    id: 9,
+    seller: "Rift Valley Grains",
+    product: "Wheat Flour (2kg)",
+    price: "KES 150/bag",
+    location: "Nakuru",
+    rating: 4.6,
+    reviews: 42,
+    category: "Grains",
+    image: "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
+    inStock: true,
+  },
+  {
+    id: 10,
+    seller: "Savanna Ranch",
+    product: "Beef (Local)",
+    price: "KES 700/kg",
+    location: "Laikipia",
+    rating: 4.7,
+    reviews: 29,
+    category: "Livestock",
+    image: "https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
+    inStock: true,
+  },
+  {
+    id: 11,
+    seller: "Hillside Dairy Co.",
+    product: "Fresh Yogurt",
+    price: "KES 80/500ml",
+    location: "Meru",
+    rating: 4.8,
+    reviews: 55,
+    category: "Dairy",
+    image: "https://images.unsplash.com/photo-1488477181212-4328570de597?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
+    inStock: true,
+  },
+  {
+    id: 12,
+    seller: "Kienyeji Farmers",
+    product: "Free-Range Chicken",
+    price: "KES 900/bird",
+    location: "Muranga",
+    rating: 4.9,
+    reviews: 87,
+    category: "Poultry",
+    image: "https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
+    inStock: true,
+  },
+  {
+    id: 13,
+    seller: "Kijani Farms",
+    product: "Spinach (Bunch)",
+    price: "KES 30/bunch",
+    location: "Nairobi",
+    rating: 4.7,
+    reviews: 71,
+    category: "Vegetables",
+    image: "https://images.unsplash.com/photo-1576045057995-568f588f82fb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
+    inStock: true,
+  },
+  {
+    id: 14,
+    seller: "Maasai Ranchers",
+    product: "Goat Meat",
+    price: "KES 600/kg",
+    location: "Kajiado",
+    rating: 4.6,
+    reviews: 33,
+    category: "Livestock",
+    image: "https://images.unsplash.com/photo-1624372632096-f5c7b3e8b7c9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
+    inStock: false,
+  },
+  {
+    id: 15,
+    seller: "Sunny Orchards",
+    product: "Passion Fruit",
+    price: "KES 20/piece",
+    location: "Thika",
+    rating: 4.9,
+    reviews: 110,
+    category: "Fruits",
+    image: "https://images.unsplash.com/photo-1604495772376-9657f0035eb3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
     inStock: true,
   },
 ];
 
 export default function MarketPlace() {
-  const [listings, setListings] = useState(initialListings);
+  const [listings] = useState(initialListings);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
   const [favorites, setFavorites] = useState<number[]>([]);
-  const [cart, setCart] = useState<number[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const { addToCart, isInCart, totalItems } = useCart();
 
   const categories = ["All", "Vegetables", "Fruits", "Grains", "Dairy", "Poultry", "Livestock"];
 
   const filteredListings = listings.filter(listing => {
-    const matchesCategory = selectedCategory === "All" || listing.product.toLowerCase().includes(selectedCategory.toLowerCase());
-    const matchesSearch = listing.product.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          listing.seller.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          listing.location.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory =
+      selectedCategory === "All" || listing.category === selectedCategory;
+    const matchesSearch =
+      listing.product.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      listing.seller.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      listing.location.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -104,13 +222,20 @@ export default function MarketPlace() {
     }
   };
 
-  const addToCart = (listing: typeof initialListings[0]) => {
-    if (!cart.includes(listing.id)) {
-      setCart([...cart, listing.id]);
-      toast.success(`${listing.product} added to cart!`);
-    } else {
-      toast.info("Already in cart");
-    }
+  const handleAddToCart = (listing: typeof initialListings[0]) => {
+    addToCart({
+      id: listing.id,
+      name: listing.product,
+      price: parseInt(listing.price.replace(/[^0-9]/g, "")) || 0,
+      priceLabel: listing.price,
+      unit: listing.price.includes("kg") ? "kg" : listing.price.includes("liter") ? "liter" : listing.price.includes("piece") || listing.price.includes("bird") || listing.price.includes("bunch") || listing.price.includes("bag") || listing.price.includes("ml") ? "unit" : "unit",
+      seller: listing.seller,
+      location: listing.location,
+      image: listing.image,
+      availableQty: 50,
+      inStock: listing.inStock,
+      rating: listing.rating,
+    });
   };
 
   const handleLoadMore = () => {
@@ -119,28 +244,26 @@ export default function MarketPlace() {
 
   const handleFilters = () => {
     setShowFilters(!showFilters);
-    toast.info(showFilters ? "Filters hidden" : "Filters shown");
   };
 
   return (
     <div className="p-8">
       {/* Header */}
       <div className="mb-8 relative rounded-2xl overflow-hidden p-8 bg-gradient-to-r from-emerald-800/80 to-emerald-700/80 backdrop-blur-sm">
-        <div
-          className="absolute inset-0 opacity-20 bg-cover bg-center"
-          style={{
-            backgroundImage: "url('https://images.unsplash.com/photo-1549248581-cf105cd081f8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmcmVzaCUyMHZlZ2V0YWJsZXMlMjBtYXJrZXQlMjBwcm9kdWNlfGVufDF8fHx8MTc3MzI5NjUyMHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral')"
-          }}
-        />
+        <div className="absolute inset-0 opacity-20 bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1549248581-cf105cd081f8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080')" }} />
         <div className="relative z-10 flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-bold text-white mb-2">Market Place</h1>
-            <p className="text-emerald-200">Buy and sell agricultural products</p>
+            <p className="text-emerald-200">Buy fresh agricultural products directly from farmers</p>
           </div>
-          {cart.length > 0 && (
-            <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg">
-              <p className="text-white font-semibold">Cart: {cart.length} items</p>
-            </div>
+          {totalItems > 0 && (
+            <Link
+              to="/app/cart"
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded-xl font-semibold transition-all shadow-lg"
+            >
+              <ShoppingCart className="w-5 h-5" />
+              View Cart ({totalItems})
+            </Link>
           )}
         </div>
       </div>
@@ -284,16 +407,19 @@ export default function MarketPlace() {
                   <p className="text-2xl font-bold text-white">{listing.price}</p>
                 </div>
                 <button
-                  onClick={() => addToCart(listing)}
+                  onClick={() => handleAddToCart(listing)}
+                  disabled={!listing.inStock}
                   className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all ${
-                    cart.includes(listing.id)
-                      ? "bg-gray-600 text-white"
-                      : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                    !listing.inStock
+                      ? "bg-gray-700/60 text-gray-400 cursor-not-allowed"
+                      : isInCart(listing.id)
+                      ? "bg-emerald-700 text-white ring-2 ring-emerald-400"
+                      : "bg-emerald-600 hover:bg-emerald-500 text-white"
                   }`}
                 >
                   <ShoppingCart className="w-4 h-4" />
                   <span className="text-sm font-semibold">
-                    {cart.includes(listing.id) ? "In Cart" : "Add to Cart"}
+                    {!listing.inStock ? "Out of Stock" : isInCart(listing.id) ? "✓ In Cart" : "Add to Cart"}
                   </span>
                 </button>
               </div>

@@ -22,6 +22,8 @@ import Register from "./pages/Register";
 import RegisterFarmer from "./pages/RegisterFarmer";
 import RegisterBuyer from "./pages/RegisterBuyer";
 import RegisterExpert from "./pages/RegisterExpert";
+import Cart from "./pages/Cart";
+
 
 export const router = createBrowserRouter([
   {
@@ -67,8 +69,8 @@ export const router = createBrowserRouter([
       { path: "user-feedback", Component: UserFeedback },
       { path: "settings", Component: Settings },
       { path: "profile", Component: Profile },
-      // Expert Knowledge is now inside /app so it gets the sidebar + header/footer
       { path: "expert-knowledge", Component: ExpertKnowledge },
+      { path: "cart", Component: Cart },
     ],
   },
 ]);

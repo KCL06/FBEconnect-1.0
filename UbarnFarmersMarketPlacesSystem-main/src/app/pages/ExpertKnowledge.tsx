@@ -1,213 +1,210 @@
-import { useState } from "react";
-import { Search, ThumbsUp, ThumbsDown, BookOpen, Filter, ChevronRight } from "lucide-react";
-import { Link } from "react-router";
+import { useState, useEffect, useCallback } from "react";
+import { Search, ThumbsUp, ThumbsDown, BookOpen, Filter, ChevronRight, ChevronLeft, X, Send, Star } from "lucide-react";
+import { toast } from "sonner";
+import { carouselSlides, categories, allTags, articles, featuredGuides, popularTopics, topExperts } from "../data/expertData";
 
-const categories = [
-  { name: "Pest Management", count: 12 },
-  { name: "Soil Health", count: 8 },
-  { name: "Organic Farming", count: 15 },
-  { name: "Plant Diseases", count: 10 },
-  { name: "Seasonal Planting", count: 9 },
-  { name: "Irrigation", count: 7 },
-  { name: "Harvest Tips", count: 11 },
-  { name: "Composting", count: 6 },
-];
-
-const browseByTags = [
-  ["Crop Rotation", "Soil Testing"],
-  ["Pest Control", "Veggies"],
-  ["Sustainable", "Insects"],
-  ["Irrigation", "Soil Fertility"],
-];
-
-const articles = [
-  { id: 1, title: "Integrated Pest Management – Best Practices", category: "Pest Management", author: "Dr. John Makori", date: "2 days ago", rating: 5, color: "from-red-800 to-red-700" },
-  { id: 2, title: "Improving Soil Health for Better Yields", category: "Soil Health", author: "Dr. Grace Achieng", date: "4 days ago", rating: 5, color: "from-amber-800 to-amber-700" },
-  { id: 3, title: "Organic Farming Techniques for Beginners", category: "Organic Farming", author: "Prof. Samuel Njau", date: "1 week ago", rating: 4, color: "from-emerald-800 to-emerald-700" },
-  { id: 4, title: "Early Detection of Common Plant Diseases", category: "Plant Diseases", author: "Dr. John Makori", date: "1 week ago", rating: 5, color: "from-purple-800 to-purple-700" },
-];
-
-const popularTopics = [
-  { id: 1, title: "Crop Rotation", subtitle: "Beginner guide to crop rotation" },
-  { id: 2, title: "Soil Testing", subtitle: "Essential soil testing techniques" },
-  { id: 3, title: "Insect Pest Control", subtitle: "Effective control of garden insects" },
-  { id: 4, title: "Composting", subtitle: "Building a healthy compost system" },
-];
-
-const topExperts = [
-  { name: "Dr. Emily Wangari", specialty: "Pest Expert", color: "bg-orange-500" },
-  { name: "Dr. Samuel Njau", specialty: "Soil Specialist", color: "bg-emerald-600" },
-  { name: "Prof. Grace Achieng", specialty: "Organic Farming", color: "bg-purple-600" },
-];
-
-const featuredGuides = [
-  { title: "Sustainable pest control techniques", color: "from-yellow-700 to-yellow-600" },
-  { title: "Preventing powdery mildew on vegetables", color: "from-green-800 to-green-700" },
-  { title: "Best crops for dry and rainy seasons", color: "from-blue-800 to-blue-700" },
-];
+type Article = typeof articles[0];
+type Guide = typeof featuredGuides[0];
+type Topic = typeof popularTopics[0];
 
 export default function ExpertKnowledge() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [carouselIdx, setCarouselIdx] = useState(0);
+  const [showQuestionModal, setShowQuestionModal] = useState(false);
+  const [question, setQuestion] = useState("");
+  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
+  const [selectedGuide, setSelectedGuide] = useState<Guide | null>(null);
+  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
+  const [likes, setLikes] = useState<Record<number, number>>(() => Object.fromEntries(articles.map(a => [a.id, a.likes])));
+  const [dislikes, setDislikes] = useState<Record<number, number>>(() => Object.fromEntries(articles.map(a => [a.id, a.dislikes])));
+  const [voted, setVoted] = useState<Record<number, "up" | "down" | null>>({});
+  const [showAll, setShowAll] = useState(false);
+
+  const nextSlide = useCallback(() => setCarouselIdx(i => (i + 1) % carouselSlides.length), []);
+  const prevSlide = () => setCarouselIdx(i => (i - 1 + carouselSlides.length) % carouselSlides.length);
+
+  useEffect(() => {
+    const t = setInterval(nextSlide, 4500);
+    return () => clearInterval(t);
+  }, [nextSlide]);
+
+  const handleLike = (id: number) => {
+    if (voted[id] === "up") return;
+    setLikes(l => ({ ...l, [id]: l[id] + 1 }));
+    if (voted[id] === "down") setDislikes(d => ({ ...d, [id]: Math.max(0, d[id] - 1) }));
+    setVoted(v => ({ ...v, [id]: "up" }));
+    toast.success("Thanks for your feedback!");
+  };
+  const handleDislike = (id: number) => {
+    if (voted[id] === "down") return;
+    setDislikes(d => ({ ...d, [id]: d[id] + 1 }));
+    if (voted[id] === "up") setLikes(l => ({ ...l, [id]: Math.max(0, l[id] - 1) }));
+    setVoted(v => ({ ...v, [id]: "down" }));
+    toast.info("Feedback noted.");
+  };
+
+  const handleSubmitQuestion = () => {
+    if (!question.trim()) { toast.error("Please enter your question."); return; }
+    toast.success("Question submitted! An expert will respond within 48 hours.");
+    setQuestion("");
+    setShowQuestionModal(false);
+  };
+
+  const filtered = articles.filter(a => {
+    const matchCat = !activeCategory || a.category === activeCategory;
+    const matchTag = !activeTag || a.tags.includes(activeTag);
+    const matchSearch = !searchQuery || a.title.toLowerCase().includes(searchQuery.toLowerCase()) || a.category.toLowerCase().includes(searchQuery.toLowerCase()) || a.author.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchCat && matchTag && matchSearch;
+  });
+  const displayed = showAll ? filtered : filtered.slice(0, 4);
+
+  const slide = carouselSlides[carouselIdx];
+
+  const Modal = ({ title, content, onClose }: { title: string; content: string; onClose: () => void }) => (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-emerald-900 border border-emerald-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex items-start justify-between mb-4">
+          <h3 className="text-white font-bold text-lg leading-tight pr-4">{title}</h3>
+          <button onClick={onClose} className="text-emerald-400 hover:text-white flex-shrink-0"><X className="w-5 h-5" /></button>
+        </div>
+        <p className="text-emerald-200 text-sm leading-relaxed whitespace-pre-line">{content}</p>
+        <button onClick={onClose} className="mt-5 w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl font-semibold transition-all">Close</button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="p-6 lg:p-8">
-      {/* Page Header */}
-      <div className="mb-8 relative rounded-2xl overflow-hidden p-8 bg-gradient-to-r from-emerald-800/80 to-emerald-700/80 backdrop-blur-sm">
-        <div className="absolute inset-0 opacity-20 bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1582794496242-8165eed32971?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080')" }} />
-        <div className="relative z-10 text-center">
-          <div className="flex justify-center mb-3">
-            <div className="w-12 h-12 bg-emerald-600/60 rounded-full flex items-center justify-center">
-              <BookOpen className="w-6 h-6 text-emerald-200" />
-            </div>
-          </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Expert Knowledge Library</h1>
-          <p className="text-emerald-200 max-w-2xl mx-auto">
-            Farming knowledge, guides and tips curated by agricultural experts to help you grow better.
-            Browse articles or submit your own question for expert advice.
-          </p>
-          <button className="mt-5 px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full shadow-lg transition-all font-semibold">
+      {/* ── Carousel ── */}
+      <div className="relative mb-8 rounded-2xl overflow-hidden h-64 md:h-80 shadow-2xl">
+        <div className="absolute inset-0 bg-cover bg-center transition-all duration-700" style={{ backgroundImage: `url(${slide.image})` }} />
+        <div className={`absolute inset-0 bg-gradient-to-r ${slide.gradient} opacity-80`} />
+        <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-6">
+          <div className="text-5xl mb-3">{slide.emoji}</div>
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">{slide.title}</h1>
+          <p className="text-emerald-200 max-w-xl mb-5">{slide.subtitle}</p>
+          <button onClick={() => setShowQuestionModal(true)} className="px-7 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full font-semibold shadow-lg transition-all">
             Submit A Question
           </button>
         </div>
-      </div>
-
-      {/* Search Bar */}
-      <div className="mb-8">
-        <div className="relative max-w-2xl mx-auto">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-400 w-5 h-5" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search articles, guides & topics..."
-            className="w-full pl-12 pr-12 py-3.5 bg-white/10 border border-white/20 text-white placeholder-emerald-300/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400 backdrop-blur-sm"
-          />
-          <button className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-300 hover:text-white transition-colors">
-            <Filter className="w-5 h-5" />
-          </button>
+        <button onClick={prevSlide} className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/30 hover:bg-black/50 rounded-full flex items-center justify-center text-white transition-all"><ChevronLeft className="w-5 h-5" /></button>
+        <button onClick={nextSlide} className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/30 hover:bg-black/50 rounded-full flex items-center justify-center text-white transition-all"><ChevronRight className="w-5 h-5" /></button>
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
+          {carouselSlides.map((_, i) => (
+            <button key={i} onClick={() => setCarouselIdx(i)} className={`w-2 h-2 rounded-full transition-all ${i === carouselIdx ? "bg-white w-5" : "bg-white/40"}`} />
+          ))}
         </div>
       </div>
 
+      {/* ── Search Bar ── */}
+      <div className="mb-8 max-w-2xl mx-auto">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-400 w-5 h-5" />
+            <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search articles, guides & topics..." className="w-full pl-12 pr-4 py-3.5 bg-white/10 border border-white/20 text-white placeholder-emerald-300/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400 backdrop-blur-sm" />
+          </div>
+          <button onClick={() => { setActiveCategory(null); setActiveTag(null); setSearchQuery(""); toast.info("Filters cleared"); }} className="flex items-center gap-2 px-4 py-3 bg-white/10 border border-white/20 text-emerald-200 rounded-xl hover:bg-white/20 transition-all">
+            <Search className="w-4 h-4" /><Filter className="w-4 h-4" />
+          </button>
+        </div>
+        {(activeCategory || activeTag) && (
+          <div className="flex gap-2 mt-2 flex-wrap">
+            {activeCategory && <span className="flex items-center gap-1 bg-emerald-700/60 text-emerald-200 text-xs px-3 py-1 rounded-full"><span>{activeCategory}</span><button onClick={() => setActiveCategory(null)}><X className="w-3 h-3" /></button></span>}
+            {activeTag && <span className="flex items-center gap-1 bg-emerald-700/60 text-emerald-200 text-xs px-3 py-1 rounded-full"><span>{activeTag}</span><button onClick={() => setActiveTag(null)}><X className="w-3 h-3" /></button></span>}
+          </div>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        {/* Left Sidebar – Categories + Tags */}
+        {/* ── Sidebar ── */}
         <div className="lg:col-span-1 space-y-5">
-          {/* Categories */}
           <div className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 p-5">
             <h3 className="text-lg font-bold text-white mb-4">Categories</h3>
-            <ul className="space-y-2">
-              {categories.map((cat) => (
+            <ul className="space-y-1.5">
+              {categories.map(cat => (
                 <li key={cat.name}>
-                  <button
-                    onClick={() => setActiveCategory(activeCategory === cat.name ? null : cat.name)}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all text-sm ${activeCategory === cat.name ? "bg-emerald-700 text-white" : "text-emerald-200 hover:bg-emerald-800/40 hover:text-white"}`}
-                  >
-                    <span>{cat.name}</span>
-                    <span className="w-6 h-6 bg-emerald-600/60 rounded-full flex items-center justify-center text-xs font-semibold">{cat.count}</span>
+                  <button onClick={() => { setActiveCategory(activeCategory === cat.name ? null : cat.name); setActiveTag(null); toast.success(`Filtering: ${cat.name}`); }} className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all text-sm ${activeCategory === cat.name ? "bg-emerald-600 text-white" : "text-emerald-200 hover:bg-emerald-800/40 hover:text-white"}`}>
+                    <span>{cat.emoji} {cat.name}</span>
+                    <span className="w-6 h-6 bg-emerald-700/60 rounded-full flex items-center justify-center text-xs font-semibold">{cat.count}</span>
                   </button>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Browse by Tags */}
           <div className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 p-5">
             <h3 className="text-lg font-bold text-white mb-4">Browse By Tags</h3>
-            <div className="space-y-2">
-              {browseByTags.map((row, rowIndex) => (
-                <div key={rowIndex} className="grid grid-cols-2 gap-2">
-                  {row.map((tag) => (
-                    <button key={tag} className="px-3 py-2 bg-emerald-800/60 hover:bg-emerald-700 text-emerald-200 hover:text-white rounded-lg transition-all text-xs font-medium border border-emerald-700/30">
-                      {tag}
-                    </button>
-                  ))}
-                </div>
+            <div className="flex flex-wrap gap-2">
+              {allTags.map(tag => (
+                <button key={tag} onClick={() => { setActiveTag(activeTag === tag ? null : tag); toast.success(`Tag: ${tag}`); }} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all border ${activeTag === tag ? "bg-emerald-600 text-white border-emerald-500" : "bg-emerald-800/60 hover:bg-emerald-700 text-emerald-200 border-emerald-700/30"}`}>{tag}</button>
               ))}
             </div>
           </div>
 
-          {/* Top Experts */}
           <div className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 p-5">
             <h3 className="text-lg font-bold text-white mb-4">Top Experts</h3>
             <div className="space-y-3">
-              {topExperts.map((expert) => (
-                <div key={expert.name} className="flex items-center gap-3">
-                  <div className={`w-10 h-10 ${expert.color} rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}>
-                    {expert.name.charAt(0)}
-                  </div>
-                  <div>
-                    <p className="text-white text-sm font-semibold">{expert.name}</p>
-                    <p className="text-emerald-400 text-xs">{expert.specialty}</p>
-                  </div>
-                </div>
+              {topExperts.map(e => (
+                <button key={e.name} onClick={() => toast.success(`Viewing ${e.name}'s profile`)} className="w-full flex items-center gap-3 hover:bg-white/5 p-1 rounded-lg transition-all text-left">
+                  <div className={`w-10 h-10 ${e.color} rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}>{e.name.charAt(0)}</div>
+                  <div><p className="text-white text-sm font-semibold">{e.name}</p><p className="text-emerald-400 text-xs">{e.specialty} · {e.articles} articles</p></div>
+                </button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Main Content – Articles + Guides */}
+        {/* ── Main Content ── */}
         <div className="lg:col-span-3 space-y-8">
-          {/* Articles Grid */}
+          {/* Articles */}
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-white">Latest Articles</h2>
-              <button className="text-emerald-400 hover:text-white text-sm transition-colors flex items-center gap-1">
-                View all <ChevronRight className="w-4 h-4" />
-              </button>
+              <h2 className="text-xl font-bold text-white">Latest Articles <span className="text-emerald-400 text-sm font-normal">({filtered.length})</span></h2>
+              <button onClick={() => setShowAll(s => !s)} className="text-emerald-400 hover:text-white text-sm flex items-center gap-1 transition-colors">{showAll ? "Show less" : "View all"}<ChevronRight className="w-4 h-4" /></button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {articles.map((article) => (
-                <div key={article.id} className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden hover:bg-white/10 transition-all hover:border-emerald-500/40 group cursor-pointer">
-                  <div className={`h-36 bg-gradient-to-br ${article.color} flex items-center justify-center`}>
-                    <BookOpen className="w-10 h-10 text-white/40" />
-                  </div>
-                  <div className="p-4">
-                    <span className="inline-block px-2 py-0.5 bg-emerald-700/60 text-emerald-200 text-xs rounded-md mb-2 font-medium">
-                      {article.category}
-                    </span>
-                    <h4 className="font-semibold text-white mb-2 group-hover:text-emerald-300 transition-colors">{article.title}</h4>
-                    <div className="flex items-center gap-1 mb-3">
-                      {[...Array(5)].map((_, i) => (
-                        <span key={i} className={i < article.rating ? "text-yellow-400" : "text-gray-600"}>★</span>
-                      ))}
+            {displayed.length === 0 ? (
+              <div className="text-center py-12 text-emerald-400"><BookOpen className="w-10 h-10 mx-auto mb-3 opacity-50" /><p>No articles match your filters.</p><button onClick={() => { setActiveCategory(null); setActiveTag(null); setSearchQuery(""); }} className="mt-3 text-emerald-300 underline text-sm">Clear filters</button></div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {displayed.map(article => (
+                  <div key={article.id} onClick={() => setSelectedArticle(article)} className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden hover:bg-white/10 hover:border-emerald-500/40 group cursor-pointer transition-all">
+                    <div className="h-40 bg-cover bg-center relative" style={{ backgroundImage: `url(${article.image})` }}>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                      <span className="absolute top-3 left-3 px-2 py-0.5 bg-emerald-700/80 backdrop-blur-sm text-emerald-200 text-xs rounded-md font-medium">{article.category}</span>
+                      <div className="absolute bottom-3 left-3 flex gap-0.5">{[...Array(5)].map((_, i) => <span key={i} className={i < article.rating ? "text-yellow-400 text-sm" : "text-gray-600 text-sm"}>★</span>)}</div>
                     </div>
-                    <div className="flex items-center justify-between text-xs text-emerald-300">
-                      <span>{article.author}</span>
-                      <span>{article.date}</span>
-                    </div>
-                    <div className="flex items-center justify-between mt-3">
-                      <div className="w-7 h-7 bg-emerald-800 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                        {article.author.split(" ")[2]?.charAt(0) || article.author.charAt(0)}
-                      </div>
-                      <div className="flex gap-2">
-                        <button className="p-1.5 hover:bg-emerald-700/40 rounded-lg text-emerald-300 hover:text-white transition-all">
-                          <ThumbsUp className="w-4 h-4" />
-                        </button>
-                        <button className="p-1.5 hover:bg-red-700/40 rounded-lg text-emerald-300 hover:text-red-400 transition-all">
-                          <ThumbsDown className="w-4 h-4" />
-                        </button>
+                    <div className="p-4">
+                      <h4 className="font-semibold text-white mb-1 group-hover:text-emerald-300 transition-colors text-sm leading-tight">{article.title}</h4>
+                      <p className="text-emerald-400 text-xs mb-3">{article.author} · {article.date}</p>
+                      <div className="flex items-center justify-between" onClick={e => e.stopPropagation()}>
+                        <span className="text-emerald-400 text-xs">Click to read →</span>
+                        <div className="flex gap-2">
+                          <button onClick={() => handleLike(article.id)} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-all ${voted[article.id] === "up" ? "bg-emerald-600 text-white" : "hover:bg-emerald-700/40 text-emerald-300"}`}><ThumbsUp className="w-3.5 h-3.5" />{likes[article.id]}</button>
+                          <button onClick={() => handleDislike(article.id)} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-all ${voted[article.id] === "down" ? "bg-red-700 text-white" : "hover:bg-red-700/40 text-red-400"}`}><ThumbsDown className="w-3.5 h-3.5" />{dislikes[article.id]}</button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Featured Guides */}
           <div>
             <h2 className="text-xl font-bold text-white mb-4">Featured Guides</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {featuredGuides.map((guide) => (
-                <div key={guide.title} className="rounded-xl overflow-hidden shadow-md cursor-pointer group hover:scale-105 transition-transform">
-                  <div className={`h-40 bg-gradient-to-br ${guide.color} flex items-center justify-center`}>
-                    <BookOpen className="w-10 h-10 text-white/50 group-hover:text-white/80 transition-colors" />
+              {featuredGuides.map(guide => (
+                <div key={guide.title} onClick={() => setSelectedGuide(guide)} className="rounded-xl overflow-hidden shadow-md cursor-pointer group hover:scale-[1.02] transition-transform">
+                  <div className="h-40 bg-cover bg-center relative" style={{ backgroundImage: `url(${guide.image})` }}>
+                    <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-all" />
+                    <div className="absolute top-3 left-3 text-2xl">{guide.emoji}</div>
                   </div>
                   <div className="p-4 bg-white/5 border border-white/10 border-t-0">
                     <p className="text-white font-medium text-sm leading-tight">{guide.title}</p>
-                    <div className="flex items-center gap-1 mt-2 text-emerald-400 text-xs font-medium">
-                      Read guide <ChevronRight className="w-3 h-3" />
-                    </div>
+                    <div className="flex items-center gap-1 mt-2 text-emerald-400 text-xs font-medium">Read guide <ChevronRight className="w-3 h-3" /></div>
                   </div>
                 </div>
               ))}
@@ -217,30 +214,48 @@ export default function ExpertKnowledge() {
           {/* Popular Topics */}
           <div className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 p-6">
             <h2 className="text-xl font-bold text-white mb-5">Popular Topics</h2>
-            <ol className="space-y-4">
-              {popularTopics.map((topic) => (
-                <li key={topic.id} className="flex items-start gap-4 pb-4 border-b border-white/10 last:border-0 last:pb-0">
-                  <span className="w-8 h-8 bg-emerald-700/60 rounded-full flex items-center justify-center text-emerald-200 font-bold text-sm flex-shrink-0">
-                    {topic.id}
-                  </span>
-                  <div>
-                    <p className="font-semibold text-white">{topic.title}</p>
-                    <p className="text-emerald-300 text-sm mt-0.5">{topic.subtitle}</p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-emerald-400 ml-auto mt-1 flex-shrink-0" />
+            <ol className="space-y-3">
+              {popularTopics.map(topic => (
+                <li key={topic.id}>
+                  <button onClick={() => setSelectedTopic(topic)} className="w-full flex items-center gap-4 pb-3 border-b border-white/10 last:border-0 last:pb-0 hover:bg-white/5 rounded-lg px-2 py-2 transition-all text-left group">
+                    <span className="w-8 h-8 bg-emerald-700/60 rounded-full flex items-center justify-center text-emerald-200 font-bold text-sm flex-shrink-0">{topic.id}</span>
+                    <div className="flex-1"><p className="font-semibold text-white group-hover:text-emerald-300 transition-colors">{topic.title}</p><p className="text-emerald-300 text-xs mt-0.5">{topic.subtitle}</p></div>
+                    <ChevronRight className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                  </button>
                 </li>
               ))}
             </ol>
           </div>
 
-          {/* Browse All CTA */}
           <div className="text-center">
-            <button className="px-12 py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-lg font-bold shadow-lg hover:shadow-emerald-500/25 transition-all">
+            <button onClick={() => { setShowAll(true); toast.success("Showing all articles!"); }} className="px-12 py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-lg font-bold shadow-lg hover:shadow-emerald-500/25 transition-all">
               Browse All Articles
             </button>
           </div>
         </div>
       </div>
+
+      {/* ── Modals ── */}
+      {showQuestionModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-emerald-900 border border-emerald-700 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-bold text-lg">Ask an Expert</h3>
+              <button onClick={() => setShowQuestionModal(false)}><X className="w-5 h-5 text-emerald-400 hover:text-white" /></button>
+            </div>
+            <p className="text-emerald-300 text-sm mb-4">Submit your farming question and get an answer from our expert community within 48 hours.</p>
+            <textarea value={question} onChange={e => setQuestion(e.target.value)} placeholder="Describe your farming question in detail..." rows={5} className="w-full bg-white/10 border border-white/20 text-white placeholder-emerald-400/60 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400 text-sm resize-none mb-4" />
+            <div className="flex gap-3">
+              <button onClick={() => setShowQuestionModal(false)} className="flex-1 py-2.5 border border-white/20 text-emerald-200 rounded-xl hover:bg-white/10 transition-all text-sm">Cancel</button>
+              <button onClick={handleSubmitQuestion} className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl font-semibold transition-all text-sm"><Send className="w-4 h-4" />Submit Question</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedArticle && <Modal title={selectedArticle.title} content={`By ${selectedArticle.author} · ${selectedArticle.date}\n\n${selectedArticle.content}`} onClose={() => setSelectedArticle(null)} />}
+      {selectedGuide && <Modal title={selectedGuide.title} content={selectedGuide.content} onClose={() => setSelectedGuide(null)} />}
+      {selectedTopic && <Modal title={selectedTopic.title} content={selectedTopic.content} onClose={() => setSelectedTopic(null)} />}
     </div>
   );
 }

@@ -608,7 +608,7 @@ export default function EpertKnowledge() {
       <div className="absolute bg-[#511d1d] h-[285px] left-[117px] rounded-[95px] top-[7082px] w-[978px]" />
       <p className="-translate-x-1/2 absolute font-['Baloo:Regular',sans-serif] h-[244px] leading-[normal] left-[2135px] not-italic text-[128px] text-center text-white top-[172px] w-[2186px]">EXPERT KNOWLEDGE LIBRARY</p>
       <p className="-translate-x-1/2 absolute font-['Baloo:Regular',sans-serif] h-[200px] leading-[normal] left-[655.5px] not-italic text-[#161515] text-[128px] text-center top-[558px] w-[845px]">Dashboard</p>
-      <p className="-translate-x-1/2 absolute font-['Baloo:Regular',sans-serif] h-[244px] leading-[normal] left-[569.5px] not-italic text-[128px] text-center text-white top-[172px] w-[1017px]">AgroLink</p>
+      <p className="-translate-x-1/2 absolute font-['Baloo:Regular',sans-serif] h-[244px] leading-[normal] left-[569.5px] not-italic text-[128px] text-center text-white top-[172px] w-[1017px]">FBEconnect</p>
       <div className="absolute left-[7788px] size-[370px] top-[41px]">
         <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 370 370">
           <circle cx="185" cy="185" fill="url(#paint0_linear_217_265)" id="Ellipse 8" r="185" />

@@ -55,7 +55,7 @@ export default function Register() {
                 </div>
               </div>
               <h1 className="text-4xl font-bold text-white mb-3">Create Your Account</h1>
-              <p className="text-emerald-200 text-lg">Choose your account type to get started on AgroLink</p>
+              <p className="text-emerald-200 text-lg">Choose your account type to get started on FBEconnect</p>
             </div>
 
             {/* Role Cards */}

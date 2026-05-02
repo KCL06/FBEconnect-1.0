@@ -26,7 +26,7 @@ export default function Header({ isAuthenticated = false }: HeaderProps) {
             <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-emerald-500 rounded-full flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
               <Leaf className="w-5 h-5 text-white" />
             </div>
-            <span className="text-2xl font-bold text-white tracking-tight">AgroLink</span>
+            <span className="text-2xl font-bold text-white tracking-tight">FBEconnect</span>
           </Link>
 
           {/* Desktop Navigation */}

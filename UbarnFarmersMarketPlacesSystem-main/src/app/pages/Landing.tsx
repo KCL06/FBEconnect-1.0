@@ -35,7 +35,7 @@ const testimonials = [
     name: "James Mwangi",
     farm: "Sunrise Farm",
     image: "https://images.unsplash.com/photo-1740741703636-1680d0c0f0a0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwZmFybWVyJTIwYWdyaWN1bHR1cmV8ZW58MXx8fHwxNzc2MTYxMzA0fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-    quote: "AgroLink transformed how I manage my farm and connect with buyers. My sales increased by 40%!",
+    quote: "FBEconnect transformed how I manage my farm and connect with buyers. My sales increased by 40%!",
   },
   {
     name: "Mary Njeri",
@@ -88,10 +88,10 @@ export default function Landing() {
     const roleText = selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1);
 
     if (isLogin) {
-      toast.success(`Welcome back to AgroLink, ${roleText}!`);
+      toast.success(`Welcome back to FBEconnect, ${roleText}!`);
       navigate("/app");
     } else {
-      toast.success(`Account created successfully! Welcome to AgroLink, ${roleText}!`);
+      toast.success(`Account created successfully! Welcome to FBEconnect, ${roleText}!`);
       navigate("/app");
     }
   };
@@ -133,7 +133,7 @@ export default function Landing() {
             <div className="text-white">
               <div className="flex items-center gap-2 mb-6">
                 <div className="w-12 h-12 bg-gradient-to-br from-amber-600 to-cyan-600 rounded-full" />
-                <h1 className="text-4xl font-bold">AgroLink</h1>
+                <h1 className="text-4xl font-bold">FBEconnect</h1>
               </div>
 
               <h2 className="text-5xl lg:text-6xl font-bold mb-6 leading-tight">
@@ -511,7 +511,7 @@ export default function Landing() {
                       type="submit"
                       className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-lg transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
                     >
-                      {isLogin ? "Login to AgroLink" : "Create Account"}
+                      {isLogin ? "Login to FBEconnect" : "Create Account"}
                       <ArrowRight className="w-5 h-5" />
                     </button>
 

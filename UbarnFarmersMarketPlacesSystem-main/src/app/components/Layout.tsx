@@ -3,6 +3,7 @@ import { Home, Sprout, Package, TrendingUp, MessageSquare, ShoppingCart, Receipt
 import svgPaths from "../../imports/svg-ld7y1c2a9i";
 import { useState } from "react";
 import { useCart } from "../context/CartContext";
+import Logo from "./Logo";
 
 const menuItems = [
   { path: "/app", label: "Dashboard", icon: Home },
@@ -103,16 +104,13 @@ export default function Layout() {
         {/* Logo + Collapse Toggle */}
         <div className="p-4 border-b border-emerald-700/50 flex items-center justify-between">
           {!isCollapsed && (
-            <Link to="/" className="flex items-center gap-2 group">
-              <div className="w-9 h-9 bg-gradient-to-br from-amber-500 to-emerald-500 rounded-full flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform flex-shrink-0">
-                <Leaf className="w-4 h-4 text-white" />
-              </div>
-              <h1 className="text-xl font-bold text-white">FBEconnect</h1>
+            <Link to="/" className="flex items-center">
+              <Logo size="sm" />
             </Link>
           )}
           {isCollapsed && (
-            <div className="w-9 h-9 bg-gradient-to-br from-amber-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto">
-              <Leaf className="w-4 h-4 text-white" />
+            <div className="mx-auto">
+              <Logo size="sm" />
             </div>
           )}
           <button onClick={() => setIsCollapsed(c => !c)} className="hidden lg:flex text-emerald-400 hover:text-white p-1 rounded-lg hover:bg-emerald-700/40 transition-all" title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>

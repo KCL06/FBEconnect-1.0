@@ -2,12 +2,15 @@ import { RouterProvider } from "react-router";
 import { router } from "./routes";
 import { Toaster } from "sonner";
 import { CartProvider } from "./context/CartContext";
+import { AuthProvider } from "./context/AuthContext";
 
 export default function App() {
   return (
-    <CartProvider>
-      <RouterProvider router={router} />
-      <Toaster position="top-right" richColors />
-    </CartProvider>
+    <AuthProvider>
+      <CartProvider>
+        <RouterProvider router={router} />
+        <Toaster position="top-right" richColors />
+      </CartProvider>
+    </AuthProvider>
   );
 }

@@ -1,5 +1,6 @@
 import { Link } from "react-router";
-import { Mail, Phone, Facebook, Twitter, Instagram, Leaf, MapPin } from "lucide-react";
+import { Mail, Phone, Facebook, Twitter, Instagram, MapPin } from "lucide-react";
+import Logo from "./Logo";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -10,11 +11,8 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
           {/* Brand */}
           <div className="md:col-span-2">
-            <Link to="/" className="flex items-center gap-2 mb-4 group w-fit">
-              <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-emerald-500 rounded-full flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
-                <Leaf className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-2xl font-bold text-white">FBEconnect</span>
+            <Link to="/" className="flex items-center mb-4 w-fit">
+              <Logo size="lg" />
             </Link>
             <p className="text-emerald-300 text-sm leading-relaxed max-w-md mb-4">
               Connecting farmers, buyers, and agricultural experts to create a sustainable

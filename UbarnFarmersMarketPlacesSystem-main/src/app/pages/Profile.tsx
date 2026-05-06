@@ -1,24 +1,83 @@
-import { Camera, Mail, Phone, MapPin, Calendar, Edit2, Save } from "lucide-react";
-import { useState } from "react";
+import { Camera, Mail, Phone, MapPin, Calendar, Edit2, Save, FileText } from "lucide-react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { supabase } from "../../lib/supabase";
+import { useAuth } from "../context/AuthContext";
 
 export default function Profile() {
+  const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    fullName: "Hillary Brian",
-    email: "hillary.brian@agrilink.com",
-    phone: "+254 712 345 678",
-    farmName: "Green Acres",
-    location: "Nakuru, Kenya",
+    fullName: "",
+    email: "",
+    phone: "",
+    farmName: "",
+    location: "",
     farmSize: "150 acres",
     established: "2018",
     specialization: "Mixed Farming",
     bio: "Passionate farmer committed to sustainable agricultural practices. Growing quality vegetables and grains for local and regional markets.",
+    avatarUrl: ""
   });
 
-  const handleSave = () => {
-    setIsEditing(false);
-    toast.success("Profile updated successfully!");
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
+    }
+  }, [user]);
+
+  const fetchProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select(`*, farmer_profiles(*)`)
+        .eq("id", user?.id)
+        .single();
+
+      if (error) throw error;
+      setFormData(prev => ({
+        ...prev,
+        fullName: data.full_name || "",
+        email: data.email || "",
+        phone: data.phone || "",
+        farmName: data.farmer_profiles?.farm_name || "",
+        location: data.farmer_profiles?.farm_location || "",
+        avatarUrl: data.avatar_url || ""
+      }));
+    } catch (err: any) {
+      console.error("Error fetching profile:", err.message);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!user) return;
+    try {
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          full_name: formData.fullName,
+          phone: formData.phone,
+        })
+        .eq("id", user.id);
+
+      if (profileError) throw profileError;
+
+      // Use upsert so it works even if no farmer_profile row exists yet
+      const { error: farmerError } = await supabase
+        .from("farmer_profiles")
+        .upsert({
+          id: user.id,
+          farm_name: formData.farmName,
+          farm_location: formData.location,
+        });
+
+      if (farmerError) console.warn("Farmer profile update skipped:", farmerError.message);
+
+      setIsEditing(false);
+      toast.success("Profile updated successfully!");
+    } catch (err: any) {
+      toast.error("Failed to update profile: " + err.message);
+    }
   };
 
   return (
@@ -62,13 +121,18 @@ export default function Profile() {
             {/* Profile Image */}
             <div className="relative w-32 h-32 mx-auto mb-4">
               <div 
-                className="w-full h-full rounded-full bg-cover bg-center border-4 border-emerald-500"
+                className="w-full h-full rounded-full bg-cover bg-center border-4 border-emerald-500 overflow-hidden flex items-center justify-center bg-emerald-800"
                 style={{
-                  backgroundImage: "url('https://images.unsplash.com/photo-1622676566956-b42b50c84c31?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwZmFybWVyJTIwcG9ydHJhaXR8ZW58MXx8fHwxNzczNDkwMzc1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral')"
+                  backgroundImage: formData.avatarUrl ? `url('${formData.avatarUrl}')` : 'none'
                 }}
-              />
+              >
+                {!formData.avatarUrl && <span className="text-5xl">👨🏾‍🌾</span>}
+              </div>
               {isEditing && (
-                <button className="absolute bottom-0 right-0 bg-emerald-600 text-white p-2 rounded-full hover:bg-emerald-700 transition-all">
+                <button 
+                  onClick={() => toast.info("Please update your photo in the Settings page.")}
+                  className="absolute bottom-0 right-0 bg-emerald-600 text-white p-2 rounded-full hover:bg-emerald-700 transition-all"
+                >
                   <Camera className="w-4 h-4" />
                 </button>
               )}
@@ -159,35 +223,39 @@ export default function Profile() {
               </div>
 
               <div>
-                <label className="block text-emerald-200 text-sm font-medium mb-2">
-                  <Phone className="w-4 h-4 inline-block mr-1" />
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  disabled={!isEditing}
-                  className={`w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white ${
-                    isEditing ? "focus:outline-none focus:ring-2 focus:ring-emerald-500" : "opacity-70"
-                  }`}
-                />
+                <label className="block text-emerald-200 text-sm font-medium mb-2">Phone Number</label>
+                <div className={`relative flex shadow-sm rounded-lg overflow-hidden border border-white/20 ${isEditing ? 'focus-within:ring-2 focus-within:ring-emerald-500' : 'opacity-70'}`}>
+                  <span className="inline-flex items-center px-4 bg-white/5 text-emerald-300 border-r border-white/20 font-medium">
+                    +254
+                  </span>
+                  <div className="relative flex-1">
+                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 9) })}
+                      disabled={!isEditing}
+                      placeholder="712 345 678"
+                      className="w-full bg-white/10 text-white pl-10 pr-4 py-3 focus:outline-none transition-all"
+                    />
+                  </div>
+                </div>
+                {isEditing && <p className="text-emerald-400/60 text-xs mt-1.5">Enter without the country code</p>}
               </div>
 
               <div>
-                <label className="block text-emerald-200 text-sm font-medium mb-2">
-                  <MapPin className="w-4 h-4 inline-block mr-1" />
-                  Location
-                </label>
-                <input
-                  type="text"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  disabled={!isEditing}
-                  className={`w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white ${
-                    isEditing ? "focus:outline-none focus:ring-2 focus:ring-emerald-500" : "opacity-70"
-                  }`}
-                />
+                <label className="block text-emerald-200 text-sm font-medium mb-2">Location / Address</label>
+                <div className={`relative shadow-sm rounded-lg overflow-hidden border border-white/20 ${isEditing ? 'focus-within:ring-2 focus-within:ring-emerald-500' : 'opacity-70'}`}>
+                  <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-emerald-400" />
+                  <input
+                    type="text"
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    disabled={!isEditing}
+                    placeholder="e.g., Nairobi, Kenya"
+                    className="w-full bg-white/10 text-white pl-10 pr-4 py-3 focus:outline-none transition-all"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -258,18 +326,26 @@ export default function Profile() {
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-emerald-200 text-sm font-medium mb-2">
-                  Bio / Description
-                </label>
-                <textarea
-                  value={formData.bio}
-                  onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                  disabled={!isEditing}
-                  rows={4}
-                  className={`w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white resize-none ${
-                    isEditing ? "focus:outline-none focus:ring-2 focus:ring-emerald-500" : "opacity-70"
-                  }`}
-                />
+                <div className="flex justify-between items-end mb-2">
+                  <label className="block text-emerald-200 text-sm font-medium">About You (Bio)</label>
+                  {isEditing && (
+                    <span className={`text-xs ${(formData.bio || "").length > 400 ? 'text-red-400' : 'text-emerald-400/60'}`}>
+                      {(formData.bio || "").length} / 500
+                    </span>
+                  )}
+                </div>
+                <div className={`relative shadow-sm rounded-lg overflow-hidden border border-white/20 bg-white/10 ${isEditing ? 'focus-within:ring-2 focus-within:ring-emerald-500' : 'opacity-70'}`}>
+                  <FileText className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                  <textarea
+                    value={formData.bio}
+                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                    disabled={!isEditing}
+                    rows={4}
+                    maxLength={500}
+                    placeholder="Tell us a bit about your farm, what you grow, or your experience..."
+                    className="w-full bg-transparent border-none px-4 py-3 pl-10 text-white resize-none focus:outline-none transition-all"
+                  />
+                </div>
               </div>
             </div>
           </div>

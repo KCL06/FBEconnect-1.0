@@ -4,6 +4,7 @@ import { ChevronRight, ChevronLeft, CheckCircle, Upload, Camera } from "lucide-r
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { toast } from "sonner";
+import { signUp, saveExpertProfile } from "../../lib/auth";
 
 export default function RegisterExpert() {
   const navigate = useNavigate();
@@ -52,14 +53,34 @@ export default function RegisterExpert() {
     if (currentStep > 1) setCurrentStep((prev) => prev - 1);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.agreement) {
       toast.error("Please accept the terms and conditions");
       return;
     }
-    toast.success("Account created! Your account will be reviewed before activation.");
-    setTimeout(() => navigate("/login"), 1500);
+    setIsSubmitting(true);
+    try {
+      const data = await signUp(formData.email, formData.password, formData.fullName, "expert");
+      if (data.user) {
+        await saveExpertProfile(data.user.id, {
+          expertise: formData.expertise,
+          years_experience: parseInt(formData.yearsExperience) || 0,
+          institution: formData.institution,
+          portfolio: formData.portfolio,
+        });
+      }
+      toast.success("Account created! Your profile will be reviewed before activation.");
+      setTimeout(() => navigate("/login"), 1500);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Registration failed";
+      if (msg.includes("already registered")) toast.error("Email already in use. Try logging in.");
+      else toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

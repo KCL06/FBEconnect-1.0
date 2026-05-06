@@ -1,6 +1,7 @@
-import { TrendingUp, Package, ShoppingBag, FileText, MessageSquare, BarChart3, ArrowRight, DollarSign, TrendingDown } from "lucide-react";
+import { TrendingUp, Package, ShoppingBag, FileText, MessageSquare, ArrowRight, DollarSign, TrendingDown } from "lucide-react";
 import { Link } from "react-router";
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, ComposedChart } from "recharts";
+import { PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, ComposedChart, Bar, BarChart, Line } from "recharts";
+import { useAuth } from "../context/AuthContext";
 
 const stats = [
   { label: "Total Revenue", value: "KES 450K", change: "+12%", trend: "up", color: "from-emerald-600 to-emerald-700", icon: DollarSign },
@@ -61,17 +62,18 @@ const quickActions = [
 ];
 
 const recentMessages = [
-  { description: "New consultation request from buyer", date: "2 hours ago", color: "bg-slate-700" },
-  { description: "Price update for tomatoes", date: "5 hours ago", color: "bg-cyan-600" },
-  { description: "Order confirmed for 50kg maize", date: "1 day ago", color: "bg-emerald-600" },
-  { description: "Review received on your product", date: "2 days ago", color: "bg-slate-500" },
+  { description: "New consultation request from buyer", date: "2 hours ago", color: "bg-slate-700", image: "https://images.unsplash.com/photo-1573164713988-8665fc963095?w=400&q=80" },
+  { description: "Price update for tomatoes", date: "5 hours ago", color: "bg-cyan-600", image: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&q=80" },
+  { description: "Order confirmed for 50kg maize", date: "1 day ago", color: "bg-emerald-600", image: "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?w=400&q=80" },
+  { description: "Review received on your product", date: "2 days ago", color: "bg-slate-500", image: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=400&q=80" },
 ];
 
 export default function Dashboard() {
+  const { profile } = useAuth();
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       {/* Header */}
-      <div className="mb-8 relative rounded-2xl overflow-hidden p-8 bg-gradient-to-r from-emerald-800/80 to-emerald-700/80 backdrop-blur-sm">
+      <div className="mb-6 md:mb-8 relative rounded-2xl overflow-hidden p-6 md:p-8 bg-gradient-to-r from-emerald-800/80 to-emerald-700/80 backdrop-blur-sm">
         <div 
           className="absolute inset-0 opacity-20 bg-cover bg-center"
           style={{
@@ -79,8 +81,8 @@ export default function Dashboard() {
           }}
         />
         <div className="relative z-10">
-          <h1 className="text-4xl font-bold text-white mb-2">DASHBOARD</h1>
-          <p className="text-emerald-200">Welcome back, Lamech!</p>
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">DASHBOARD</h1>
+          <p className="text-emerald-200">Welcome back, {profile?.full_name || "Farmer"}!</p>
         </div>
       </div>
 
@@ -155,10 +157,14 @@ export default function Dashboard() {
                 key={message.description}
                 className="bg-white/5 backdrop-blur-sm rounded-xl p-4 hover:bg-white/10 transition-all cursor-pointer"
               >
-                <div className={`${message.color} h-32 rounded-lg mb-3 flex items-center justify-center`}>
-                  <MessageSquare className="w-12 h-12 text-white opacity-50" />
+                <div 
+                  className={`${message.color} h-32 rounded-lg mb-3 flex items-center justify-center relative overflow-hidden bg-cover bg-center`}
+                  style={{ backgroundImage: `url(${message.image})` }}
+                >
+                  <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-all" />
+                  <MessageSquare className="w-10 h-10 text-white opacity-90 relative z-10 drop-shadow-md" />
                 </div>
-                <p className="text-white text-sm font-medium mb-2">{message.description}</p>
+                <p className="text-white text-sm font-medium mb-1 break-words line-clamp-2">{message.description}</p>
                 <p className="text-emerald-300 text-xs">{message.date}</p>
               </div>
             ))}

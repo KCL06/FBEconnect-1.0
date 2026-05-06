@@ -2,7 +2,7 @@ import { createContext, useContext, useState, ReactNode } from "react";
 import { toast } from "sonner";
 
 export interface CartItem {
-  id: number;
+  id: string | number;
   name: string;
   price: number;        // price per unit in KES
   priceLabel: string;   // e.g. "KES 120/kg"
@@ -19,12 +19,12 @@ export interface CartItem {
 interface CartContextType {
   items: CartItem[];
   addToCart: (item: Omit<CartItem, "quantity">) => void;
-  removeFromCart: (id: number) => void;
-  updateQuantity: (id: number, qty: number) => void;
+  removeFromCart: (id: string | number) => void;
+  updateQuantity: (id: string | number, qty: number) => void;
   clearCart: () => void;
   totalItems: number;
   totalPrice: number;
-  isInCart: (id: number) => boolean;
+  isInCart: (id: string | number) => boolean;
 }
 
 const CartContext = createContext<CartContextType | null>(null);
@@ -50,7 +50,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const removeFromCart = (id: number) => {
+  const removeFromCart = (id: string | number) => {
     setItems((prev) => {
       const item = prev.find((i) => i.id === id);
       if (item) toast.info(`${item.name} removed from cart`);
@@ -58,7 +58,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const updateQuantity = (id: number, qty: number) => {
+  const updateQuantity = (id: string | number, qty: number) => {
     if (qty <= 0) {
       removeFromCart(id);
       return;
@@ -82,7 +82,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
   const totalPrice = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const isInCart = (id: number) => items.some((i) => i.id === id);
+  const isInCart = (id: string | number) => items.some((i) => i.id === id);
 
   return (
     <CartContext.Provider

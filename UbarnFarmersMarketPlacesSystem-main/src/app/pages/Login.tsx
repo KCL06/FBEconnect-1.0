@@ -1,28 +1,83 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
-import { Eye, EyeOff, Leaf, ArrowRight, Sprout, ShoppingBag, GraduationCap } from "lucide-react";
+import { Eye, EyeOff, Leaf, ArrowRight, Sprout, ShoppingBag, GraduationCap, Shield } from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import { signIn } from "../../lib/auth";
 
 export default function Login() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // MFA states
+  const [showMfa, setShowMfa] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaFactorId, setMfaFactorId] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.email || !formData.password) {
       toast.error("Please fill in all fields");
       return;
     }
     setIsLoading(true);
-    toast.success("Login successful! Welcome back.");
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const { supabase } = await import("../../lib/supabase");
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (error) throw error;
+
+      // Check if MFA is required
+      if (data.session && data.user && data.user.factors && data.user.factors.length > 0) {
+        const factor = data.user.factors.find((f: any) => f.factor_type === 'totp' && f.status === 'verified');
+        if (factor) {
+           setMfaFactorId(factor.id);
+           setShowMfa(true);
+           setIsLoading(false);
+           return;
+        }
+      }
+
+      toast.success("Welcome back to FBEconnect!");
       navigate("/app");
-    }, 1200);
+    } catch (err: any) {
+      const msg = err.message || "Login failed";
+      if (msg.includes("Invalid login")) toast.error("Wrong email or password.");
+      else if (msg.includes("Email not confirmed")) toast.error("Please verify your email first.");
+      else toast.error(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyMfa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (mfaCode.length !== 6) {
+      toast.error("Please enter a valid 6-digit code.");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const { supabase } = await import("../../lib/supabase");
+      const { data, error } = await supabase.auth.mfa.challengeAndVerify({
+        factorId: mfaFactorId,
+        code: mfaCode,
+      });
+      if (error) throw error;
+      
+      toast.success("Welcome back to FBEconnect!");
+      navigate("/app");
+    } catch (err: any) {
+      toast.error("Invalid code: " + err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -82,67 +137,104 @@ export default function Login() {
                   <p className="text-emerald-200 text-sm">Login to your FBEconnect account</p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  <div>
-                    <label className="block text-sm font-medium text-emerald-100 mb-2">Email Address</label>
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      placeholder="Enter your email"
-                      className="w-full bg-white/10 border border-white/20 text-white placeholder-emerald-300/60 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-emerald-100 mb-2">Password</label>
-                    <div className="relative">
+                {showMfa ? (
+                  <form onSubmit={handleVerifyMfa} className="space-y-5">
+                    <div>
+                      <label className="block text-sm font-medium text-emerald-100 mb-2">Two-Factor Authentication Code</label>
                       <input
-                        type={showPassword ? "text" : "password"}
-                        value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        placeholder="Enter your password"
-                        className="w-full bg-white/10 border border-white/20 text-white placeholder-emerald-300/60 rounded-xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all"
+                        type="text"
+                        maxLength={6}
+                        value={mfaCode}
+                        onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+                        placeholder="000000"
+                        className="w-full bg-white/10 border border-white/20 text-white placeholder-emerald-300/60 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all tracking-widest text-center font-mono text-xl"
                         required
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-300 hover:text-white transition-colors"
-                      >
-                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                      </button>
+                      <p className="text-emerald-300 text-xs mt-2 text-center">Open your authenticator app to get the code.</p>
                     </div>
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-emerald-500/25"
+                    >
+                      {isLoading ? "Verifying..." : "Verify & Login"}
+                      {!isLoading && <ArrowRight className="w-5 h-5" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowMfa(false); setMfaCode(""); }}
+                      className="w-full text-emerald-300 hover:text-white transition-colors text-sm font-medium mt-2"
+                    >
+                      Cancel and go back
+                    </button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleSubmit} className="space-y-5">
+                    <div>
+                      <label className="block text-sm font-medium text-emerald-100 mb-2">Email Address</label>
+                      <input
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        placeholder="Enter your email"
+                        className="w-full bg-white/10 border border-white/20 text-white placeholder-emerald-300/60 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-emerald-100 mb-2">Password</label>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          value={formData.password}
+                          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                          placeholder="Enter your password"
+                          className="w-full bg-white/10 border border-white/20 text-white placeholder-emerald-300/60 rounded-xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-300 hover:text-white transition-colors"
+                        >
+                          {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-sm">
+                      <label className="flex items-center gap-2 text-emerald-200 cursor-pointer">
+                        <input type="checkbox" id="remember" className="h-4 w-4 rounded border-white/30 bg-white/10 text-emerald-500 focus:ring-emerald-500" />
+                        Remember me
+                      </label>
+                      <Link
+                        to="/forgot-password"
+                        className="text-emerald-300 hover:text-white transition-colors font-medium"
+                      >
+                        Forgot password?
+                      </Link>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-emerald-500/25"
+                    >
+                      {isLoading ? "Signing in..." : "Login to FBEconnect"}
+                      {!isLoading && <ArrowRight className="w-5 h-5" />}
+                    </button>
+                  </form>
+                )}
+
+                <div className="mt-6 pt-5 border-t border-white/20">
+                  <div className="bg-emerald-900/40 rounded-xl p-5 mb-5 border border-emerald-500/20 text-center shadow-inner">
+                    <Shield className="w-6 h-6 text-emerald-400 mx-auto mb-2" />
+                    <p className="text-emerald-50 text-sm font-bold mb-1 tracking-wide">Secure Login</p>
+                    <p className="text-emerald-200/80 text-xs leading-relaxed max-w-xs mx-auto">
+                      Your connection is protected by enterprise-grade security and end-to-end encryption.
+                    </p>
                   </div>
-
-                  <div className="flex items-center justify-between text-sm">
-                    <label className="flex items-center gap-2 text-emerald-200 cursor-pointer">
-                      <input type="checkbox" id="remember" className="h-4 w-4 rounded border-white/30 bg-white/10 text-emerald-500 focus:ring-emerald-500" />
-                      Remember me
-                    </label>
-                    <Link to="/forgot-password" className="text-emerald-300 hover:text-white transition-colors font-medium">
-                      Forgot password?
-                    </Link>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-emerald-500/25"
-                  >
-                    {isLoading ? "Signing in..." : "Login to FBEconnect"}
-                    {!isLoading && <ArrowRight className="w-5 h-5" />}
-                  </button>
-                </form>
-
-                <div className="mt-6 pt-6 border-t border-white/20 space-y-3">
-                  <button
-                    onClick={() => { toast.success("Demo login success!"); navigate("/app"); }}
-                    className="w-full bg-white/5 hover:bg-white/10 border border-white/20 text-emerald-100 font-medium py-3 px-4 rounded-xl transition-all text-sm"
-                  >
-                    Continue as Demo User
-                  </button>
                   <p className="text-center text-emerald-200 text-sm">
                     Don't have an account?{" "}
                     <Link to="/register" className="text-white font-semibold hover:text-emerald-300 transition-colors">
@@ -150,6 +242,7 @@ export default function Login() {
                     </Link>
                   </p>
                 </div>
+
               </div>
             </div>
           </div>

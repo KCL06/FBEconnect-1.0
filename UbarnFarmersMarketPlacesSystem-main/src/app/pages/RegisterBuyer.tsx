@@ -4,6 +4,7 @@ import { ChevronRight, ChevronLeft, CheckCircle, Upload } from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { toast } from "sonner";
+import { signUp, saveBuyerProfile } from "../../lib/auth";
 
 export default function RegisterBuyer() {
   const navigate = useNavigate();
@@ -58,16 +59,34 @@ export default function RegisterBuyer() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.agreement) {
       toast.error("Please accept the terms and conditions");
       return;
     }
-    toast.success("Account successfully created. Please log in to continue.");
-    setTimeout(() => {
-      navigate("/login");
-    }, 1500);
+    setIsSubmitting(true);
+    try {
+      const data = await signUp(formData.email, formData.password, formData.fullName, "buyer");
+      if (data.user) {
+        await saveBuyerProfile(data.user.id, {
+          location: formData.location,
+          preferred_products: formData.preferredProducts,
+          buying_frequency: formData.buyingFrequency,
+          account_type: formData.accountType,
+        });
+      }
+      toast.success("Account created! Check your email to verify, then log in.");
+      setTimeout(() => navigate("/login"), 1500);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Registration failed";
+      if (msg.includes("already registered")) toast.error("Email already in use. Try logging in.");
+      else toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

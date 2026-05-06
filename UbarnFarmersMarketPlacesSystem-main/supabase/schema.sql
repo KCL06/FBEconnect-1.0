@@ -131,14 +131,19 @@ create table if not exists public.farm_records (
   farmer_id   uuid references public.profiles on delete cascade,
   title       text,
   description text,
-  date        date,
-  type        text,
+  date        date not null,
+  activity    text not null,
+  type        text not null,
+  area        text,
   created_at  timestamptz default now()
 );
 alter table public.farm_records enable row level security;
-create policy "Farmers manage own records" on public.farm_records for all using (auth.uid() = farmer_id);
+create policy "Farmers see own records"    on public.farm_records for select using (auth.uid() = farmer_id);
+create policy "Farmers insert own records" on public.farm_records for insert with check (auth.uid() = farmer_id);
+create policy "Farmers update own records" on public.farm_records for update using (auth.uid() = farmer_id);
+create policy "Farmers delete own records" on public.farm_records for delete using (auth.uid() = farmer_id);
 
--- 11. CONSULTATIONS
+
 create table if not exists public.consultations (
   id          uuid default gen_random_uuid() primary key,
   farmer_id   uuid references public.profiles on delete cascade,
@@ -193,6 +198,8 @@ create table if not exists public.notifications (
 alter table public.notifications enable row level security;
 create policy "Users see own notifications" on public.notifications for all using (auth.uid() = user_id);
 
+
+
 -- ══════════════════════════════════════════════════════
 -- AUTO-CREATE PROFILE ON SIGNUP
 -- ══════════════════════════════════════════════════════
@@ -214,3 +221,47 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- ══════════════════════════════════════════════════════
+-- SUPABASE STORAGE BUCKETS
+-- ══════════════════════════════════════════════════════
+-- Note: Run these commands to set up the storage buckets.
+-- You might need to enable the Storage extension or run this from the SQL Editor as a Superuser.
+insert into storage.buckets (id, name, public) 
+values ('product-images', 'product-images', true),
+       ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
+-- PRODUCT IMAGES POLICIES
+create policy "Anyone can view product images"
+on storage.objects for select
+using ( bucket_id = 'product-images' );
+
+create policy "Authenticated users can upload product images"
+on storage.objects for insert
+with check ( bucket_id = 'product-images' and auth.uid() is not null );
+
+create policy "Users can update their own product images"
+on storage.objects for update
+using ( bucket_id = 'product-images' and auth.uid() = owner );
+
+create policy "Users can delete their own product images"
+on storage.objects for delete
+using ( bucket_id = 'product-images' and auth.uid() = owner );
+
+-- AVATARS POLICIES
+create policy "Anyone can view avatars"
+on storage.objects for select
+using ( bucket_id = 'avatars' );
+
+create policy "Authenticated users can upload avatars"
+on storage.objects for insert
+with check ( bucket_id = 'avatars' and auth.uid() is not null );
+
+create policy "Users can update their own avatars"
+on storage.objects for update
+using ( bucket_id = 'avatars' and auth.uid() = owner );
+
+create policy "Users can delete their own avatars"
+on storage.objects for delete
+using ( bucket_id = 'avatars' and auth.uid() = owner );

@@ -66,13 +66,17 @@ const availableExperts = [
   { name: "Prof. Mary Njeri", specialty: "Soil Health", rating: 4.8, consultations: 203, avatar: "👩🏾‍🏫" },
   { name: "Eng. Peter Mutua", specialty: "Irrigation", rating: 4.7, consultations: 98, avatar: "👨🏿‍💼" },
   { name: "Dr. Lucy Wambui", specialty: "Organic Farming", rating: 5.0, consultations: 176, avatar: "👩🏾‍⚕️" },
+  { name: "Mr. David Omondi", specialty: "Sales & Marketing", rating: 4.9, consultations: 312, avatar: "📊" },
+  { name: "Ms. Sarah Chen", specialty: "Digital Marketing", rating: 4.8, consultations: 185, avatar: "📱" },
+  { name: "Mr. Kevin Maina", specialty: "Market Linkages", rating: 4.7, consultations: 124, avatar: "🤝" },
 ];
 
 export default function Consultations() {
   const [consultations, setConsultations] = useState(initialConsultations);
   const [callModal, setCallModal] = useState<Consultation | null>(null);
   const [rescheduleModal, setRescheduleModal] = useState<Consultation | null>(null);
-  const [bookModal, setBookModal] = useState<typeof availableExperts[0] | null>(null);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [selectedExpert, setSelectedExpert] = useState<typeof availableExperts[0] | null>(null);
   const [inCall, setInCall] = useState(false);
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
@@ -126,37 +130,35 @@ export default function Consultations() {
     }
   };
 
-  const handleBookNow = () => {
+  const handleBookNow = (expert: typeof availableExperts[0]) => {
     if (!bookDate || !bookTime) {
       toast.error("Please select a date and time");
       return;
     }
-    if (bookModal) {
-      const newConsultation: Consultation = {
-        id: Date.now(),
-        expert: bookModal.name,
-        specialty: bookModal.specialty,
-        date: new Date(bookDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
-        time: bookTime,
-        duration: "45 min",
-        status: "Upcoming",
-        type: "Video Call",
-        avatar: bookModal.avatar,
-      };
-      setConsultations(prev => [newConsultation, ...prev]);
-      toast.success(`Consultation booked with ${bookModal.name}!`);
-      setBookModal(null);
-      setBookDate("");
-      setBookTime("");
-      setBookNotes("");
-    }
+    const newConsultation: Consultation = {
+      id: Date.now(),
+      expert: expert.name,
+      specialty: expert.specialty,
+      date: new Date(bookDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
+      time: bookTime,
+      duration: "45 min",
+      status: "Upcoming",
+      type: "Video Call",
+      avatar: expert.avatar,
+    };
+    setConsultations(prev => [newConsultation, ...prev]);
+    toast.success(`Consultation booked with ${expert.name}!`);
+    setIsBookingModalOpen(false);
+    setBookDate("");
+    setBookTime("");
+    setBookNotes("");
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-white mb-2">Consultations</h1>
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Consultations</h1>
         <p className="text-emerald-200">Connect with agricultural experts</p>
       </div>
 
@@ -181,7 +183,7 @@ export default function Consultations() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold text-white">My Consultations</h2>
           <button
-            onClick={() => setBookModal(availableExperts[0])}
+            onClick={() => { setIsBookingModalOpen(true); setSelectedExpert(availableExperts[0]); }}
             className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg flex items-center gap-2 shadow-lg transition-all"
           >
             <Plus className="w-5 h-5" />
@@ -289,7 +291,7 @@ export default function Consultations() {
                 </div>
               </div>
               <button
-                onClick={() => setBookModal(expert)}
+                onClick={() => { setIsBookingModalOpen(true); setSelectedExpert(expert); }}
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm transition-all"
               >
                 Book Now
@@ -453,72 +455,99 @@ export default function Consultations() {
         </div>
       )}
 
-      {/* Book Consultation Modal */}
-      {bookModal && (
+      {/* Book Consultation Modal with Carousel */}
+      {isBookingModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-emerald-900 border border-emerald-700/50 rounded-2xl p-8 w-full max-w-md shadow-2xl">
-            <div className="flex items-center justify-between mb-6">
+          <div className="bg-emerald-900 border border-emerald-700/50 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-emerald-700/50 flex items-center justify-between shrink-0">
               <h2 className="text-xl font-bold text-white">Book Consultation</h2>
-              <button onClick={() => setBookModal(null)} className="text-gray-400 hover:text-white">
+              <button onClick={() => setIsBookingModalOpen(false)} className="text-gray-400 hover:text-white">
                 <X className="w-6 h-6" />
               </button>
             </div>
-            <div className="flex items-center gap-4 bg-white/5 rounded-xl p-4 mb-6">
-              <div className="text-5xl">{bookModal.avatar}</div>
-              <div>
-                <p className="text-white font-bold">{bookModal.name}</p>
-                <p className="text-emerald-300 text-sm">{bookModal.specialty}</p>
-                <p className="text-yellow-400 text-sm">⭐ {bookModal.rating} • {bookModal.consultations} sessions</p>
-              </div>
-            </div>
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="block text-emerald-100 text-sm font-medium mb-2">Preferred Date</label>
-                <input
-                  type="date"
-                  value={bookDate}
-                  onChange={e => setBookDate(e.target.value)}
-                  min={new Date().toISOString().split("T")[0]}
-                  className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-              <div>
-                <label className="block text-emerald-100 text-sm font-medium mb-2">Preferred Time</label>
-                <select
-                  value={bookTime}
-                  onChange={e => setBookTime(e.target.value)}
-                  className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 [&>option]:bg-emerald-900 [&>option]:text-white"
-                >
-                  <option value="">Select time</option>
-                  {["8:00 AM","9:00 AM","10:00 AM","11:00 AM","12:00 PM","1:00 PM","2:00 PM","3:00 PM","4:00 PM","5:00 PM"].map(t => (
-                    <option key={t} value={t}>{t}</option>
+            
+            <div className="overflow-y-auto p-6 scrollbar-hide">
+              {/* Expert Carousel */}
+              <div className="mb-8">
+                <h3 className="text-emerald-100 text-sm font-medium mb-3">Select an Expert</h3>
+                <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
+                  {availableExperts.map((expert, idx) => (
+                    <div 
+                      key={idx}
+                      onClick={() => setSelectedExpert(expert)}
+                      className={`min-w-[160px] snap-start cursor-pointer rounded-xl p-4 transition-all border ${selectedExpert?.name === expert.name ? 'bg-emerald-800 border-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.3)] scale-105' : 'bg-white/5 border-white/10 hover:bg-white/10 opacity-70 hover:opacity-100'}`}
+                    >
+                      <div className="text-4xl mb-2 text-center">{expert.avatar}</div>
+                      <h4 className="text-white font-bold text-center text-sm mb-1 line-clamp-1">{expert.name}</h4>
+                      <p className="text-emerald-300 text-xs text-center line-clamp-1">{expert.specialty}</p>
+                      <p className="text-yellow-400 text-xs text-center mt-2">⭐ {expert.rating}</p>
+                    </div>
                   ))}
-                </select>
+                </div>
               </div>
-              <div>
-                <label className="block text-emerald-100 text-sm font-medium mb-2">Topic / Notes (optional)</label>
-                <textarea
-                  value={bookNotes}
-                  onChange={e => setBookNotes(e.target.value)}
-                  className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
-                  placeholder="What would you like to discuss?"
-                  rows={3}
-                />
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={handleBookNow}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-lg font-semibold transition-all"
-              >
-                Confirm Booking
-              </button>
-              <button
-                onClick={() => setBookModal(null)}
-                className="flex-1 bg-white/10 hover:bg-white/20 text-white py-3 rounded-lg font-semibold transition-all"
-              >
-                Cancel
-              </button>
+
+              {/* Booking Form for Selected Expert */}
+              {selectedExpert && (
+                <div className="bg-black/20 rounded-xl p-6 border border-white/10 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                  <div className="flex items-center gap-4 mb-6 pb-6 border-b border-white/10">
+                    <div className="text-4xl">{selectedExpert.avatar}</div>
+                    <div>
+                      <p className="text-white font-bold text-lg">Booking with {selectedExpert.name}</p>
+                      <p className="text-emerald-300 text-sm">{selectedExpert.specialty}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4 mb-6">
+                    <div>
+                      <label className="block text-emerald-100 text-sm font-medium mb-2">Preferred Date</label>
+                      <input
+                        type="date"
+                        value={bookDate}
+                        onChange={e => setBookDate(e.target.value)}
+                        min={new Date().toISOString().split("T")[0]}
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-emerald-100 text-sm font-medium mb-2">Preferred Time</label>
+                      <select
+                        value={bookTime}
+                        onChange={e => setBookTime(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 [&>option]:bg-emerald-900 [&>option]:text-white transition-all"
+                      >
+                        <option value="">Select time</option>
+                        {["8:00 AM","9:00 AM","10:00 AM","11:00 AM","12:00 PM","1:00 PM","2:00 PM","3:00 PM","4:00 PM","5:00 PM"].map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-emerald-100 text-sm font-medium mb-2">Topic / Notes (optional)</label>
+                      <textarea
+                        value={bookNotes}
+                        onChange={e => setBookNotes(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none transition-all"
+                        placeholder="What would you like to discuss?"
+                        rows={3}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => handleBookNow(selectedExpert)}
+                      className="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white py-3 rounded-lg font-bold transition-all shadow-lg hover:shadow-emerald-500/25"
+                    >
+                      Confirm Booking
+                    </button>
+                    <button
+                      onClick={() => setIsBookingModalOpen(false)}
+                      className="flex-1 bg-white/5 hover:bg-white/10 text-white py-3 rounded-lg font-semibold transition-all border border-white/10"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

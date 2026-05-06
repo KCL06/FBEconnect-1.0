@@ -1,7 +1,8 @@
 import { Link, useLocation } from "react-router";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Globe } from "lucide-react";
 import { useState } from "react";
 import Logo from "./Logo";
+import { useLanguage } from "../context/LanguageContext";
 
 interface HeaderProps {
   isAuthenticated?: boolean;
@@ -10,12 +11,17 @@ interface HeaderProps {
 export default function Header({ isAuthenticated = false }: HeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { language, setLanguage, t } = useLanguage();
+
+  const toggleLanguage = () => {
+    setLanguage(language === 'en' ? 'sw' : 'en');
+  };
 
   const navLinks = [
     { to: "/", label: "Home" },
-    { to: "/app/marketplace", label: "Marketplace" },
-    { to: "/app/expert-knowledge", label: "Expert Knowledge" },
-    { to: "/app", label: "Dashboard" },
+    { to: "#about", label: "About Us" },
+    { to: "#services", label: "Services" },
+    { to: "#contact", label: "Contact" },
   ];
 
   return (
@@ -47,46 +53,58 @@ export default function Header({ isAuthenticated = false }: HeaderProps) {
             })}
           </nav>
 
-          {/* Auth Buttons */}
-          <div className="hidden md:flex items-center gap-3">
-            {isAuthenticated ? (
-              <>
-                <Link
-                  to="/app/profile"
-                  className="px-4 py-2 text-emerald-100 hover:text-white transition-colors text-sm font-medium"
-                >
-                  Profile
-                </Link>
-                <button className="px-4 py-2 bg-red-600/80 hover:bg-red-600 text-white rounded-lg transition-all text-sm font-medium">
-                  Logout
-                </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  to="/login"
-                  className="px-4 py-2 text-emerald-100 hover:text-white border border-emerald-600 hover:border-emerald-400 rounded-lg transition-all text-sm font-medium"
-                >
-                  Login
-                </Link>
-                <Link
-                  to="/register"
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-all shadow-md hover:shadow-emerald-500/25 text-sm font-medium"
-                >
-                  Register
-                </Link>
-              </>
-            )}
-          </div>
+          <div className="flex items-center gap-4">
+            {/* Language Toggle */}
+            <button 
+              onClick={toggleLanguage}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-800/50 border border-emerald-600 text-emerald-100 hover:text-white hover:bg-emerald-700 transition-all text-sm font-medium"
+              title="Toggle Language"
+            >
+              <Globe className="w-4 h-4" />
+              <span>{language === 'en' ? 'EN' : 'SW'}</span>
+            </button>
 
-          {/* Mobile Menu Button */}
-          <button
-            className="md:hidden text-emerald-100 hover:text-white p-2 rounded-lg hover:bg-emerald-800/60 transition-all"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            aria-label="Toggle menu"
-          >
-            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
+            {/* Auth Buttons */}
+            <div className="hidden md:flex items-center gap-3">
+              {isAuthenticated ? (
+                <>
+                  <Link
+                    to="/app/profile"
+                    className="px-4 py-2 text-emerald-100 hover:text-white transition-colors text-sm font-medium"
+                  >
+                    Profile
+                  </Link>
+                  <button className="px-4 py-2 bg-red-600/80 hover:bg-red-600 text-white rounded-lg transition-all text-sm font-medium">
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    className="px-4 py-2 text-emerald-100 hover:text-white border border-emerald-600 hover:border-emerald-400 rounded-lg transition-all text-sm font-medium"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-all shadow-md hover:shadow-emerald-500/25 text-sm font-medium"
+                  >
+                    Register
+                  </Link>
+                </>
+              )}
+            </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              className="md:hidden text-emerald-100 hover:text-white p-2 rounded-lg hover:bg-emerald-800/60 transition-all"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Menu */}

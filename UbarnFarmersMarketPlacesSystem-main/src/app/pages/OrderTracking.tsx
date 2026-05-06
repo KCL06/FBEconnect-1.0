@@ -1,137 +1,162 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Package, Truck, CheckCircle, Clock, MapPin, Phone, X } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "../../lib/supabase";
+import { useAuth } from "../context/AuthContext";
 
-type OrderStatus = "Pending" | "Processing" | "In Transit" | "Delivered";
+type OrderStatus = "pending" | "confirmed" | "shipped" | "delivered" | "cancelled";
 type FilterTab = "All Orders" | OrderStatus;
-
-const initialOrders = [
-  {
-    id: "ORD-001",
-    product: "Organic Tomatoes",
-    quantity: "100 kg",
-    buyer: "John Mwangi",
-    phone: "+254 712 345 678",
-    status: "In Transit" as OrderStatus,
-    orderDate: "April 13, 2026",
-    deliveryDate: "April 15, 2026",
-    location: "Nairobi - En route",
-    progress: 60,
-  },
-  {
-    id: "ORD-002",
-    product: "Fresh Maize",
-    quantity: "200 kg",
-    buyer: "Sarah Wanjiru",
-    phone: "+254 723 456 789",
-    status: "Delivered" as OrderStatus,
-    orderDate: "April 11, 2026",
-    deliveryDate: "April 13, 2026",
-    location: "Kiambu - Delivered",
-    progress: 100,
-  },
-  {
-    id: "ORD-003",
-    product: "Green Cabbage",
-    quantity: "80 kg",
-    buyer: "David Ochieng",
-    phone: "+254 734 567 890",
-    status: "Processing" as OrderStatus,
-    orderDate: "April 14, 2026",
-    deliveryDate: "April 16, 2026",
-    location: "Farm - Preparing",
-    progress: 25,
-  },
-  {
-    id: "ORD-004",
-    product: "Fresh Milk",
-    quantity: "150 liters",
-    buyer: "Grace Akinyi",
-    phone: "+254 745 678 901",
-    status: "Pending" as OrderStatus,
-    orderDate: "April 15, 2026",
-    deliveryDate: "April 16, 2026",
-    location: "Awaiting Pickup",
-    progress: 10,
-  },
-];
 
 const trackingStepsFor = (status: OrderStatus) => {
   const steps = [
     { label: "Order Placed", icon: CheckCircle },
-    { label: "Processing", icon: Package },
-    { label: "In Transit", icon: Truck },
+    { label: "Confirmed", icon: Package },
+    { label: "Shipped", icon: Truck },
     { label: "Delivered", icon: CheckCircle },
   ];
   const completedCount =
-    status === "Pending" ? 1 :
-    status === "Processing" ? 2 :
-    status === "In Transit" ? 3 :
-    4;
+    status === "pending" ? 1 :
+    status === "confirmed" ? 2 :
+    status === "shipped" ? 3 :
+    status === "delivered" ? 4 : 0;
   return steps.map((s, i) => ({ ...s, completed: i < completedCount }));
 };
 
 const statusColors: Record<OrderStatus, string> = {
-  Delivered: "bg-emerald-900/50 text-emerald-300",
-  "In Transit": "bg-purple-900/50 text-purple-300",
-  Processing: "bg-blue-900/50 text-blue-300",
-  Pending: "bg-amber-900/50 text-amber-300",
+  delivered: "bg-emerald-900/50 text-emerald-300",
+  shipped: "bg-purple-900/50 text-purple-300",
+  confirmed: "bg-blue-900/50 text-blue-300",
+  pending: "bg-amber-900/50 text-amber-300",
+  cancelled: "bg-red-900/50 text-red-300",
 };
 
-const filterTabs: FilterTab[] = ["All Orders", "Pending", "Processing", "In Transit", "Delivered"];
+const filterTabs: FilterTab[] = ["All Orders", "pending", "confirmed", "shipped", "delivered"];
 
 export default function OrderTracking() {
-  const [orders, setOrders] = useState(initialOrders);
+  const { profile } = useAuth();
+  const [orders, setOrders] = useState<any[]>([]);
   const [activeFilter, setActiveFilter] = useState<FilterTab>("All Orders");
-  const [contactModal, setContactModal] = useState<typeof initialOrders[0] | null>(null);
-  const [updateModal, setUpdateModal] = useState<typeof initialOrders[0] | null>(null);
+  const [contactModal, setContactModal] = useState<any | null>(null);
+  const [updateModal, setUpdateModal] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!profile) return;
+
+    const fetchOrders = async () => {
+      setIsLoading(true);
+      try {
+        let query = supabase.from('orders').select(`
+          id, status, created_at, total_amount,
+          buyer:profiles!buyer_id(full_name, phone),
+          items:order_items!inner(
+            quantity,
+            price_at_purchase,
+            product:products!inner(name, farmer_id)
+          )
+        `).order('created_at', { ascending: false });
+
+        if (profile.role === 'buyer') {
+          query = query.eq('buyer_id', profile.id);
+        } else if (profile.role === 'farmer') {
+          query = query.eq('items.product.farmer_id', profile.id);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        
+        if (data) {
+          const formatted = data.map((o: any) => {
+            const productNames = o.items.map((i: any) => i.product.name).join(", ");
+            const totalQty = o.items.reduce((sum: number, i: any) => sum + i.quantity, 0);
+            
+            return {
+              id: o.id,
+              product: productNames || "Multiple Items",
+              quantity: `${totalQty} units`,
+              buyer: o.buyer?.full_name || "Unknown Buyer",
+              phone: o.buyer?.phone || "No phone provided",
+              status: o.status,
+              orderDate: new Date(o.created_at).toLocaleDateString(),
+              deliveryDate: "Pending Update", 
+              location: o.status === 'pending' ? "Awaiting Confirmation" : o.status === 'confirmed' ? "Farm - Preparing" : o.status === 'shipped' ? "In Transit" : o.status === 'delivered' ? "Delivered" : "Cancelled",
+              progress: o.status === 'pending' ? 10 : o.status === 'confirmed' ? 40 : o.status === 'shipped' ? 70 : o.status === 'delivered' ? 100 : 0
+            };
+          });
+          setOrders(formatted);
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to load orders");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchOrders();
+
+    const channel = supabase
+      .channel('public:orders')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        fetchOrders();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile]);
 
   const filtered = activeFilter === "All Orders"
     ? orders
     : orders.filter(o => o.status === activeFilter);
 
   const counts = {
-    Pending: orders.filter(o => o.status === "Pending").length,
-    Processing: orders.filter(o => o.status === "Processing").length,
-    "In Transit": orders.filter(o => o.status === "In Transit").length,
-    Delivered: orders.filter(o => o.status === "Delivered").length,
+    pending: orders.filter(o => o.status === "pending").length,
+    confirmed: orders.filter(o => o.status === "confirmed").length,
+    shipped: orders.filter(o => o.status === "shipped").length,
+    delivered: orders.filter(o => o.status === "delivered").length,
   };
 
-  const handleUpdateStatus = (orderId: string, newStatus: OrderStatus) => {
-    const progressMap: Record<OrderStatus, number> = {
-      Pending: 10,
-      Processing: 25,
-      "In Transit": 60,
-      Delivered: 100,
-    };
-    setOrders(prev =>
-      prev.map(o =>
-        o.id === orderId
-          ? { ...o, status: newStatus, progress: progressMap[newStatus] }
-          : o
-      )
-    );
-    toast.success(`Order ${orderId} status updated to ${newStatus}`);
-    setUpdateModal(null);
+  const handleUpdateStatus = async (orderId: string, newStatus: OrderStatus) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: newStatus })
+        .eq('id', orderId);
+        
+      if (error) throw error;
+      
+      toast.success(`Order status updated to ${newStatus}`);
+      setUpdateModal(null);
+    } catch (err: any) {
+      toast.error("Failed to update status: " + err.message);
+    }
   };
+
+  if (isLoading) {
+    return <div className="p-4 md:p-8 text-white">Loading orders...</div>;
+  }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-white mb-2">Order Tracking</h1>
-        <p className="text-emerald-200">Track and manage your orders in real-time</p>
+      <div className="mb-6 md:mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-bold text-white mb-2">Order Tracking</h1>
+          <p className="text-emerald-200">Track and manage your orders in real-time</p>
+        </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-        {(["Pending", "Processing", "In Transit", "Delivered"] as OrderStatus[]).map((status) => {
-          const icons = { Pending: Clock, Processing: Package, "In Transit": Truck, Delivered: CheckCircle };
+        {(["pending", "confirmed", "shipped", "delivered"] as OrderStatus[]).map((status) => {
+          const icons = { pending: Clock, confirmed: Package, shipped: Truck, delivered: CheckCircle };
           const colors = {
-            Pending: "from-amber-600 to-amber-700",
-            Processing: "from-blue-600 to-blue-700",
-            "In Transit": "from-purple-600 to-purple-700",
-            Delivered: "from-emerald-600 to-emerald-700",
+            pending: "from-amber-600 to-amber-700",
+            confirmed: "from-blue-600 to-blue-700",
+            shipped: "from-purple-600 to-purple-700",
+            delivered: "from-emerald-600 to-emerald-700",
           };
           const Icon = icons[status];
           return (
@@ -143,7 +168,7 @@ export default function OrderTracking() {
               }`}
             >
               <Icon className="w-8 h-8 mb-3 opacity-80" />
-              <p className="text-sm opacity-80 mb-1">{status}</p>
+              <p className="text-sm opacity-80 mb-1 capitalize">{status}</p>
               <p className="text-3xl font-bold">{counts[status]}</p>
             </button>
           );
@@ -156,7 +181,7 @@ export default function OrderTracking() {
           <button
             key={tab}
             onClick={() => setActiveFilter(tab)}
-            className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-all ${
+            className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-all capitalize ${
               activeFilter === tab
                 ? "bg-emerald-600 text-white shadow-lg"
                 : "bg-white/10 text-emerald-200 hover:bg-white/20"
@@ -190,11 +215,11 @@ export default function OrderTracking() {
                   <div>
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="text-white font-bold text-lg">{order.product}</h3>
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColors[order.status]}`}>
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${statusColors[order.status as OrderStatus] || 'bg-gray-700 text-gray-300'}`}>
                         {order.status}
                       </span>
                     </div>
-                    <p className="text-gray-400 text-sm mb-1">Order ID: {order.id}</p>
+                    <p className="text-gray-400 text-xs mb-1 font-mono">ID: {order.id}</p>
                     <p className="text-emerald-300 text-sm">Quantity: {order.quantity}</p>
                   </div>
                   <div className="flex gap-2">
@@ -203,9 +228,9 @@ export default function OrderTracking() {
                       className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-all"
                     >
                       <Phone className="w-4 h-4" />
-                      Contact Buyer
+                      Contact
                     </button>
-                    {order.status !== "Delivered" && (
+                    {profile?.role === 'farmer' && order.status !== "delivered" && (
                       <button
                         onClick={() => setUpdateModal(order)}
                         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-all"
@@ -287,13 +312,13 @@ export default function OrderTracking() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-emerald-900 border border-emerald-700/50 rounded-2xl p-8 w-full max-w-md shadow-2xl">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white">Contact Buyer</h2>
+              <h2 className="text-xl font-bold text-white">Contact Info</h2>
               <button onClick={() => setContactModal(null)} className="text-gray-400 hover:text-white">
                 <X className="w-6 h-6" />
               </button>
             </div>
             <div className="bg-white/5 rounded-xl p-4 mb-6">
-              <p className="text-emerald-300 text-sm mb-1">Order: {contactModal.id}</p>
+              <p className="text-emerald-300 text-sm mb-1 font-mono text-xs">Order: {contactModal.id}</p>
               <p className="text-white font-bold text-lg">{contactModal.buyer}</p>
               <div className="flex items-center gap-2 mt-3">
                 <Phone className="w-5 h-5 text-emerald-400" />
@@ -303,22 +328,12 @@ export default function OrderTracking() {
             <div className="flex gap-3">
               <button
                 onClick={() => {
-                  toast.success(`Calling ${contactModal.buyer}...`);
+                  toast.info("Please use the Messages app for secure communication.");
                   setContactModal(null);
                 }}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-lg font-semibold transition-all"
               >
-                <Phone className="w-5 h-5" />
-                Call Now
-              </button>
-              <button
-                onClick={() => {
-                  toast.success(`Message sent to ${contactModal.buyer}`);
-                  setContactModal(null);
-                }}
-                className="flex-1 bg-white/10 hover:bg-white/20 text-white py-3 rounded-lg font-semibold transition-all"
-              >
-                Send Message
+                Go to Messages
               </button>
             </div>
           </div>
@@ -335,15 +350,15 @@ export default function OrderTracking() {
                 <X className="w-6 h-6" />
               </button>
             </div>
-            <p className="text-gray-300 mb-6">
-              Order <span className="text-white font-semibold">{updateModal.id}</span> — {updateModal.product}
+            <p className="text-gray-300 mb-6 text-sm">
+              Order <span className="text-white font-semibold font-mono text-xs block truncate">{updateModal.id}</span>
             </p>
             <div className="space-y-3">
-              {(["Pending", "Processing", "In Transit", "Delivered"] as OrderStatus[]).map((status) => (
+              {(["pending", "confirmed", "shipped", "delivered"] as OrderStatus[]).map((status) => (
                 <button
                   key={status}
                   onClick={() => handleUpdateStatus(updateModal.id, status)}
-                  className={`w-full py-3 px-4 rounded-lg text-left font-medium transition-all ${
+                  className={`w-full py-3 px-4 rounded-lg text-left font-medium transition-all capitalize ${
                     updateModal.status === status
                       ? "bg-emerald-600 text-white cursor-default"
                       : "bg-white/10 text-white hover:bg-white/20"

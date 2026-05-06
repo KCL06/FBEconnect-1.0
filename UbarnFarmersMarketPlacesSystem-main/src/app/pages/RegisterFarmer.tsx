@@ -4,6 +4,7 @@ import { ChevronRight, ChevronLeft, CheckCircle, Upload, Camera } from "lucide-r
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { toast } from "sonner";
+import { signUp, saveFarmerProfile } from "../../lib/auth";
 
 export default function RegisterFarmer() {
   const navigate = useNavigate();
@@ -60,16 +61,35 @@ export default function RegisterFarmer() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.agreement) {
       toast.error("Please accept the terms and conditions");
       return;
     }
-    toast.success("Account successfully created. Please log in to continue.");
-    setTimeout(() => {
-      navigate("/login");
-    }, 1500);
+    setIsSubmitting(true);
+    try {
+      const data = await signUp(formData.email, formData.password, formData.fullName, "farmer");
+      if (data.user) {
+        await saveFarmerProfile(data.user.id, {
+          farm_name: formData.farmName,
+          farm_location: formData.farmLocation,
+          farming_type: formData.farmingType,
+          years_experience: parseInt(formData.yearsExperience) || 0,
+          national_id: formData.nationalId,
+        });
+      }
+      toast.success("Account created! Check your email to verify, then log in.");
+      setTimeout(() => navigate("/login"), 1500);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Registration failed";
+      if (msg.includes("already registered")) toast.error("Email already in use. Try logging in.");
+      else toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -210,8 +230,12 @@ export default function RegisterFarmer() {
                     Next <ChevronRight className="w-4 h-4" />
                   </button>
                 ) : (
-                  <button type="submit" className="ml-auto px-8 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold transition-all">
-                    Complete Registration
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="ml-auto px-8 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white rounded-xl font-semibold transition-all"
+                  >
+                    {isSubmitting ? "Submitting..." : "Complete Registration"}
                   </button>
                 )}
               </div>

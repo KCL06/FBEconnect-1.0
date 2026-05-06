@@ -1,6 +1,8 @@
 import { useState, useRef } from "react";
-import { ArrowUpRight, ArrowDownLeft, Download, Filter, X, ChevronDown } from "lucide-react";
+import { ArrowUpRight, ArrowDownLeft, Download, Filter, X, ChevronDown, FileText } from "lucide-react";
 import { toast } from "sonner";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 
 type TxnType = "Sale" | "Purchase";
 type TxnStatus = "Completed" | "Pending";
@@ -86,7 +88,41 @@ export default function Transaction() {
     toast.info("Filters cleared");
   };
 
-  const filterTabs: FilterTab[] = ["All", "Sales" as any, "Purchase", "Pending"];
+  const generateReceipt = (txn: Transaction) => {
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(22);
+    doc.setTextColor(5, 150, 105); // Emerald 600
+    doc.text("FBEconnect Receipt", 105, 20, { align: "center" });
+    
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Receipt ID: ${txn.id}`, 20, 40);
+    doc.text(`Date: ${txn.date}`, 20, 48);
+    
+    doc.text(`Transaction Type: ${txn.type}`, 20, 60);
+    doc.text(`Party: ${txn.type === "Sale" ? txn.buyer : txn.seller}`, 20, 68);
+    
+    // Table
+    (doc as any).autoTable({
+      startY: 80,
+      head: [['Product Description', 'Amount Paid', 'Status']],
+      body: [
+        [txn.product, txn.amount, txn.status]
+      ],
+      theme: 'grid',
+      headStyles: { fillColor: [5, 150, 105] }, // Emerald 600
+      styles: { fontSize: 11, cellPadding: 6 }
+    });
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text("Thank you for using the FBEconnect agricultural marketplace.", 105, (doc as any).lastAutoTable.finalY + 30, { align: "center" });
+
+    doc.save(`Receipt_${txn.id}.pdf`);
+    toast.success("Receipt downloaded successfully!");
+  };
 
   return (
     <div className="p-8">
@@ -229,6 +265,7 @@ export default function Transaction() {
                 <th className="text-left p-4 text-emerald-200 font-semibold">Date</th>
                 <th className="text-left p-4 text-emerald-200 font-semibold">Amount</th>
                 <th className="text-left p-4 text-emerald-200 font-semibold">Status</th>
+                <th className="text-right p-4 text-emerald-200 font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -261,6 +298,17 @@ export default function Transaction() {
                     >
                       {txn.status}
                     </span>
+                  </td>
+                  <td className="p-4 text-right">
+                    {txn.status === "Completed" && (
+                      <button
+                        onClick={() => generateReceipt(txn)}
+                        className="bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 transition-all ml-auto"
+                      >
+                        <FileText className="w-4 h-4" />
+                        Receipt
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

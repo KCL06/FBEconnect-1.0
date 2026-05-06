@@ -1,8 +1,10 @@
 import { ShoppingCart, Heart, Search, Filter, Star, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Link } from "react-router";
 import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
+import { supabase } from "../../lib/supabase";
 
 const initialListings = [
   {
@@ -188,12 +190,97 @@ const initialListings = [
 ];
 
 export default function MarketPlace() {
-  const [listings] = useState(initialListings);
+  const [listings, setListings] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
   const [favorites, setFavorites] = useState<number[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const { addToCart, isInCart, totalItems } = useCart();
+  const { profile } = useAuth();
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase.from('products').select('*, profiles!farmer_id(full_name)');
+        
+        if (error) {
+          console.error("Error fetching products:", error);
+          toast.error("Failed to load products");
+          return;
+        }
+
+        if (data && data.length > 0) {
+          const mapped = data.map(p => ({
+            id: p.id,
+            seller: p.profiles?.full_name || "Unknown Farmer",
+            product: p.name,
+            price: p.price_label || `KES ${p.price}/unit`,
+            numericPrice: p.price,
+            location: p.location || "Kenya",
+            rating: p.rating || 4.5,
+            reviews: p.review_count || 0,
+            category: p.category || "Other",
+            image: p.image_url || "https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&q=80",
+            inStock: p.in_stock !== false,
+            unit: p.unit || 'unit'
+          }));
+          setListings(mapped);
+        } else {
+          // Table is empty! Let's auto-seed if the user is a farmer (to pass RLS)
+          if (profile?.role === 'farmer') {
+            toast.info("Initializing marketplace with demo products...");
+            const farmerId = profile.id;
+
+            const productsToInsert = initialListings.map(l => ({
+              name: l.product,
+              price: parseInt(l.price.replace(/[^0-9]/g, "")) || 0,
+              price_label: l.price,
+              unit: l.price.includes("kg") ? "kg" : l.price.includes("liter") ? "liter" : "piece",
+              category: l.category,
+              location: l.location,
+              image_url: l.image,
+              in_stock: l.inStock,
+              rating: l.rating,
+              review_count: l.reviews,
+              farmer_id: farmerId
+            }));
+
+            const { error: insertError } = await supabase.from('products').insert(productsToInsert);
+            if (!insertError) {
+              const { data: newData } = await supabase.from('products').select('*, profiles!farmer_id(full_name)');
+              if (newData) {
+                const mapped = newData.map(p => ({
+                  id: p.id,
+                  seller: p.profiles?.full_name || "Unknown Farmer",
+                  product: p.name,
+                  price: p.price_label || `KES ${p.price}/unit`,
+                  numericPrice: p.price,
+                  location: p.location || "Kenya",
+                  rating: p.rating || 4.5,
+                  reviews: p.review_count || 0,
+                  category: p.category || "Other",
+                  image: p.image_url || "",
+                  inStock: p.in_stock !== false,
+                  unit: p.unit || 'unit'
+                }));
+                setListings(mapped);
+                toast.success("Demo products loaded!");
+              }
+            } else {
+               console.error("Failed to seed", insertError);
+               toast.error("Failed to seed demo products. RLS policy might be blocking.");
+            }
+          }
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, [profile]);
 
   const categories = ["All", "Vegetables", "Fruits", "Grains", "Dairy", "Poultry", "Livestock"];
 
@@ -247,9 +334,9 @@ export default function MarketPlace() {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       {/* Header */}
-      <div className="mb-8 relative rounded-2xl overflow-hidden p-8 bg-gradient-to-r from-emerald-800/80 to-emerald-700/80 backdrop-blur-sm">
+      <div className="mb-6 md:mb-8 relative rounded-2xl overflow-hidden p-6 md:p-8 bg-gradient-to-r from-emerald-800/80 to-emerald-700/80 backdrop-blur-sm">
         <div className="absolute inset-0 opacity-20 bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1549248581-cf105cd081f8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080')" }} />
         <div className="relative z-10 flex items-center justify-between">
           <div>
@@ -269,7 +356,7 @@ export default function MarketPlace() {
       </div>
 
       {/* Search and Filter */}
-      <div className="flex flex-col md:flex-row gap-4 mb-8">
+      <div className="flex flex-col lg:flex-row gap-4 mb-6 md:mb-8">
         <div className="flex-1 relative">
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
@@ -327,7 +414,7 @@ export default function MarketPlace() {
       )}
 
       {/* Categories */}
-      <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
+      <div className="flex gap-2 mb-6 md:mb-8 overflow-x-auto pb-2 scrollbar-hide w-full">
         {categories.map((category) => (
           <button
             key={category}

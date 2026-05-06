@@ -1,27 +1,67 @@
 import { Link, useNavigate } from "react-router";
 import { ShoppingCart, Trash2, Plus, Minus, ArrowLeft, PackageCheck, Tag, MapPin, Star, ShoppingBag, AlertCircle } from "lucide-react";
 import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
+import { supabase } from "../../lib/supabase";
 import { toast } from "sonner";
 import { useState } from "react";
 
 export default function Cart() {
   const { items, removeFromCart, updateQuantity, clearCart, totalItems, totalPrice } = useCart();
+  const { profile } = useAuth();
   const navigate = useNavigate();
   const [isOrdering, setIsOrdering] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     if (items.length === 0) {
       toast.error("Your cart is empty!");
       return;
     }
+    if (!profile) {
+      toast.error("You must be logged in to place an order.");
+      return;
+    }
+    
     setIsOrdering(true);
-    setTimeout(() => {
+    try {
+      // 1. Create the order
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          buyer_id: profile.id,
+          status: 'pending',
+          total_amount: totalPrice,
+          notes: 'Placed via Cart'
+        })
+        .select()
+        .single();
+        
+      if (orderError) throw orderError;
+      
+      // 2. Insert order items
+      const orderItems = items.map(item => ({
+        order_id: order.id,
+        product_id: typeof item.id === "number" ? null : item.id, // only include uuid products
+        quantity: item.quantity,
+        price_at_purchase: item.price
+      })).filter(oi => oi.product_id !== null); // skip static demo items
+      
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+        
+      if (itemsError) throw itemsError;
+
       setIsOrdering(false);
       setOrderPlaced(true);
       clearCart();
       toast.success("Order placed successfully! You will be notified once confirmed.");
-    }, 2000);
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to place order: " + err.message);
+      setIsOrdering(false);
+    }
   };
 
   // ── Empty Cart ──────────────────────────────────────────────────────────────

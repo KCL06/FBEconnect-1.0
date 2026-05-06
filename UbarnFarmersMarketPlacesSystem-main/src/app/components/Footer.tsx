@@ -2,6 +2,12 @@ import { Link } from "react-router";
 import { Mail, Phone, Facebook, Twitter, Instagram, MapPin } from "lucide-react";
 import Logo from "./Logo";
 
+const TiktokIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor" stroke="none">
+    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+  </svg>
+);
+
 export default function Footer() {
   const currentYear = new Date().getFullYear();
 
@@ -20,21 +26,27 @@ export default function Footer() {
               and knowledge sharing.
             </p>
             {/* Social Media */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4 mt-6">
               {[
-                { Icon: Facebook, label: "Facebook" },
-                { Icon: Twitter, label: "Twitter" },
-                { Icon: Instagram, label: "Instagram" },
-              ].map(({ Icon, label }) => (
+                { Icon: Instagram, label: "Instagram", href: "https://instagram.com/fbeconnect" },
+                { Icon: Facebook, label: "Facebook", href: "https://facebook.com/fbeconnect" },
+                { Icon: Twitter, label: "X (Twitter)", href: "https://x.com/fbeconnect" },
+                { Icon: TiktokIcon, label: "TikTok", href: "https://tiktok.com/@fbeconnect" },
+              ].map(({ Icon, label, href }) => (
                 <a
                   key={label}
-                  href="#"
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   aria-label={label}
-                  className="w-9 h-9 bg-emerald-800 hover:bg-emerald-600 rounded-full flex items-center justify-center transition-all hover:scale-110"
+                  className="group flex flex-col items-center gap-2"
                 >
-                  <Icon className="w-4 h-4" />
+                  <div className="w-10 h-10 bg-emerald-800/80 group-hover:bg-emerald-500 rounded-full flex items-center justify-center transition-all group-hover:scale-110 shadow-lg group-hover:shadow-emerald-500/50">
+                    <Icon className="w-5 h-5 text-emerald-100 group-hover:text-white" />
+                  </div>
                 </a>
               ))}
+              <span className="text-emerald-400 font-medium ml-2 bg-emerald-900/50 px-3 py-1 rounded-full text-sm border border-emerald-500/20">@fbeconnect</span>
             </div>
           </div>
 
@@ -46,10 +58,10 @@ export default function Footer() {
             <ul className="space-y-2">
               {[
                 { to: "/", label: "Home" },
-                { to: "/app", label: "Dashboard" },
-                { to: "/app/marketplace", label: "Marketplace" },
-                { to: "/app/expert-knowledge", label: "Expert Knowledge" },
-                { to: "/app/market-prices", label: "Market Prices" },
+                { to: "#about", label: "About Us" },
+                { to: "#services", label: "Services" },
+                { to: "#contact", label: "Contact Us" },
+                { to: "/login", label: "Login" },
                 { to: "/register", label: "Get Started" },
               ].map((link) => (
                 <li key={link.to}>
@@ -109,13 +121,13 @@ export default function Footer() {
           <p className="text-emerald-400 text-sm">
             &copy; {currentYear} FBEconnect. All rights reserved. Empowering agricultural communities.
           </p>
-          <div className="flex gap-4">
-            <a href="#" className="text-emerald-400 hover:text-white text-sm transition-colors">
+          <div className="flex gap-6">
+            <Link to="/privacy" className="text-emerald-400 hover:text-white text-sm font-medium transition-colors hover:underline underline-offset-4">
               Privacy Policy
-            </a>
-            <a href="#" className="text-emerald-400 hover:text-white text-sm transition-colors">
+            </Link>
+            <Link to="/terms" className="text-emerald-400 hover:text-white text-sm font-medium transition-colors hover:underline underline-offset-4">
               Terms of Service
-            </a>
+            </Link>
           </div>
         </div>
       </div>

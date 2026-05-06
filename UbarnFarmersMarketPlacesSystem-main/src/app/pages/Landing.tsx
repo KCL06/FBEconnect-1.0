@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
-import { Sprout, TrendingUp, Users, ShoppingCart, CheckCircle, ArrowRight, GraduationCap } from "lucide-react";
+import { useNavigate, Link } from "react-router";
+import { Sprout, TrendingUp, Users, ShoppingCart, CheckCircle, ArrowRight, GraduationCap, Eye, EyeOff, Shield, ChevronDown, MapPin, Mail, Phone, Leaf } from "lucide-react";
 import { toast } from "sonner";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import { signIn } from "../../lib/auth";
+import { useLanguage } from "../context/LanguageContext";
 
 type UserRole = "farmer" | "buyer" | "expert" | null;
 
@@ -28,6 +30,29 @@ const features = [
     title: "Expert Consultations",
     description: "Get advice from agricultural experts and experienced farmers",
   },
+];
+
+const faqs = [
+  {
+    question: "How do I register as a farmer?",
+    answer: "Click the 'Sign Up' button on this page, select 'Farmer' as your role, and fill in your farm details. Once registered, you can immediately start listing your products on the marketplace."
+  },
+  {
+    question: "Is FBEconnect free to use?",
+    answer: "Yes, creating an account and browsing the marketplace is completely free. We charge a small nominal fee only when a successful transaction is completed through the platform."
+  },
+  {
+    question: "How do you ensure the quality of products?",
+    answer: "We have a strict verification process for farmers and an active rating system. Buyers can review farmers after a purchase, ensuring transparency and accountability within the community."
+  },
+  {
+    question: "Can I get agricultural advice if I'm a beginner?",
+    answer: "Absolutely! Our 'Expert Knowledge' section allows you to consult with verified agricultural experts. You can ask questions, request soil analysis tips, and get crop recommendations."
+  },
+  {
+    question: "How are payments handled?",
+    answer: "We integrate securely with major payment providers. Funds are held safely until the buyer confirms receipt of the products, protecting both parties."
+  }
 ];
 
 const testimonials = [
@@ -59,6 +84,7 @@ const testimonials = [
 
 export default function Landing() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [isLogin, setIsLogin] = useState(true);
   const [formStep, setFormStep] = useState(1);
   const [selectedRole, setSelectedRole] = useState<UserRole>(null);
@@ -76,6 +102,25 @@ export default function Landing() {
     yearsExperience: "",
     certification: "",
   });
+  const [isDemoLoading, setIsDemoLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+
+  const handleDemoLogin = async (role: "Farmer" | "Buyer") => {
+    setIsDemoLoading(true);
+    try {
+      const email = role === "Farmer" ? "farmer@fbeconnect.com" : "buyer@fbeconnect.com";
+      const password = role === "Farmer" ? "FarmerDemo2024!" : "BuyerDemo2024!";
+      await signIn(email, password);
+      toast.success(`Logged in as Demo ${role}!`);
+      navigate("/app");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Demo login failed";
+      toast.error(msg);
+    } finally {
+      setIsDemoLoading(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,11 +182,11 @@ export default function Landing() {
               </div>
 
               <h2 className="text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-                Empowering Farmers for a Better Tomorrow
+                {t('hero_title')}
               </h2>
 
               <p className="text-xl text-emerald-100 mb-8 leading-relaxed">
-                Join thousands of farmers who are transforming their agricultural businesses with our comprehensive platform. Manage your farm, connect with buyers, and grow your business.
+                {t('hero_subtitle')}
               </p>
 
               {/* Features Grid */}
@@ -184,7 +229,7 @@ export default function Landing() {
                   backgroundImage: "url('https://images.unsplash.com/photo-1708975477074-71e2907b699f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYXJtJTIwdHJhY3RvciUyMGZpZWxkJTIwYWdyaWN1bHR1cmV8ZW58MXx8fHwxNzc2MjU1OTAzfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral')"
                 }}
               />
-              
+
               <div className="relative z-10">
                 <div className="flex gap-2 mb-6">
                   <button
@@ -192,11 +237,10 @@ export default function Landing() {
                       setIsLogin(true);
                       resetRole();
                     }}
-                    className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all ${
-                      isLogin
+                    className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all ${isLogin
                         ? "bg-emerald-600 text-white shadow-lg"
                         : "bg-white/5 text-emerald-200 hover:bg-white/10"
-                    }`}
+                      }`}
                   >
                     Login
                   </button>
@@ -205,11 +249,10 @@ export default function Landing() {
                       setIsLogin(false);
                       resetRole();
                     }}
-                    className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all ${
-                      !isLogin
+                    className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all ${!isLogin
                         ? "bg-emerald-600 text-white shadow-lg"
                         : "bg-white/5 text-emerald-200 hover:bg-white/10"
-                    }`}
+                      }`}
                   >
                     Sign Up
                   </button>
@@ -227,7 +270,7 @@ export default function Landing() {
                       className="w-full bg-white/10 hover:bg-white/20 border-2 border-white/20 hover:border-emerald-400 rounded-xl p-6 transition-all group"
                     >
                       <div className="flex items-center gap-4">
-                        <div 
+                        <div
                           className="w-12 h-12 rounded-full group-hover:scale-110 transition-transform bg-cover bg-center border-2 border-emerald-400"
                           style={{
                             backgroundImage: "url('https://images.unsplash.com/photo-1627829382469-f4bce7df99ba?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYXJtZXIlMjBwb3J0cmFpdCUyMHByb2Zlc3Npb25hbHxlbnwxfHx8fDE3NzYxOTUzNTF8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral')"
@@ -246,7 +289,7 @@ export default function Landing() {
                       className="w-full bg-white/10 hover:bg-white/20 border-2 border-white/20 hover:border-blue-400 rounded-xl p-6 transition-all group"
                     >
                       <div className="flex items-center gap-4">
-                        <div 
+                        <div
                           className="w-12 h-12 rounded-full group-hover:scale-110 transition-transform bg-cover bg-center border-2 border-blue-400"
                           style={{
                             backgroundImage: "url('https://images.unsplash.com/photo-1753161618211-2b3d3166133a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxidXNpbmVzcyUyMHBlcnNvbiUyMGJ1eWVyfGVufDF8fHx8MTc3NjI1NTkwNHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral')"
@@ -265,7 +308,7 @@ export default function Landing() {
                       className="w-full bg-white/10 hover:bg-white/20 border-2 border-white/20 hover:border-purple-400 rounded-xl p-6 transition-all group"
                     >
                       <div className="flex items-center gap-4">
-                        <div 
+                        <div
                           className="w-12 h-12 rounded-full group-hover:scale-110 transition-transform bg-cover bg-center border-2 border-purple-400"
                           style={{
                             backgroundImage: "url('https://images.unsplash.com/photo-1582794496242-8165eed32971?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZ3JpY3VsdHVyYWwlMjBleHBlcnQlMjBzY2llbnRpc3R8ZW58MXx8fHwxNzc2MjU1OTA0fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral')"
@@ -474,8 +517,8 @@ export default function Landing() {
                         className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         placeholder={
                           selectedRole === "farmer" ? "farmer@example.com" :
-                          selectedRole === "buyer" ? "buyer@example.com" :
-                          "expert@example.com"
+                            selectedRole === "buyer" ? "buyer@example.com" :
+                              "expert@example.com"
                         }
                         required
                       />
@@ -485,14 +528,23 @@ export default function Landing() {
                       <label className="block text-emerald-100 text-sm font-medium mb-2">
                         Password
                       </label>
-                      <input
-                        type="password"
-                        value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        placeholder="Enter your password"
-                        required
-                      />
+                      <div className="relative">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          value={formData.password}
+                          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                          className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 pr-12 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          placeholder="Enter your password"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-300 hover:text-white transition-colors"
+                        >
+                          {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
                     </div>
 
                     {isLogin && (
@@ -517,29 +569,155 @@ export default function Landing() {
 
                     {!isLogin && (
                       <p className="text-emerald-200 text-xs text-center">
-                        By signing up, you agree to our Terms of Service and Privacy Policy
+                        By signing up, you agree to our <Link to="/terms" className="text-emerald-400 hover:text-white underline">Terms of Service</Link> and <Link to="/privacy" className="text-emerald-400 hover:text-white underline">Privacy Policy</Link>
                       </p>
                     )}
                   </form>
                 )}
 
-                {/* Demo Login */}
+                {/* Platform Trust Indicator */}
                 {!selectedRole && (
                   <div className="mt-6 pt-6 border-t border-white/20">
-                    <button
-                      onClick={() => {
-                        toast.success("Logged in as demo user!");
-                        navigate("/app");
-                      }}
-                      className="w-full bg-white/5 hover:bg-white/10 text-emerald-100 font-medium py-3 px-4 rounded-lg transition-all border border-white/20"
-                    >
-                      Continue as Demo User
-                    </button>
+                    <div className="bg-emerald-900/40 rounded-xl p-5 border border-emerald-500/20 text-center shadow-inner">
+                      <Shield className="w-8 h-8 text-emerald-400 mx-auto mb-3" />
+                      <p className="text-emerald-50 text-sm font-bold mb-1 tracking-wide">Secure & Verified Network</p>
+                      <p className="text-emerald-200/80 text-xs leading-relaxed max-w-xs mx-auto">
+                        FBEconnect employs enterprise-grade security to protect your farm data and ensure safe transactions within our trusted community.
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
             </div>
           </div>
+          {/* About Us Section */}
+          <section id="about" className="py-20 scroll-mt-20">
+            <div className="bg-white/5 backdrop-blur-md rounded-3xl p-8 md:p-12 border border-white/10 shadow-2xl">
+              <div className="grid md:grid-cols-2 gap-12 items-center">
+                <div>
+                  <h2 className="text-4xl font-bold text-white mb-6 flex items-center gap-3">
+                    <Leaf className="w-8 h-8 text-emerald-400" />
+                    About FBEconnect
+                  </h2>
+                  <p className="text-emerald-100 text-lg leading-relaxed mb-6">
+                    FBEconnect is revolutionizing the agricultural landscape by bridging the gap between local farmers, bulk buyers, and seasoned agricultural experts. We believe in empowering the farming community through technology, ensuring fair trade, and promoting sustainable farming practices.
+                  </p>
+                  <p className="text-emerald-100 text-lg leading-relaxed">
+                    Founded with a vision to digitize agriculture, our platform serves as a comprehensive ecosystem. Whether you're looking to manage your farm efficiently, sell your produce at competitive market prices, or seek professional agronomy advice, FBEconnect is your trusted partner in growth.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-emerald-900/40 p-6 rounded-2xl border border-emerald-500/20 text-center">
+                    <h3 className="text-3xl font-bold text-white mb-2">10K+</h3>
+                    <p className="text-emerald-300 text-sm">Verified Farmers</p>
+                  </div>
+                  <div className="bg-emerald-900/40 p-6 rounded-2xl border border-emerald-500/20 text-center">
+                    <h3 className="text-3xl font-bold text-white mb-2">50+</h3>
+                    <p className="text-emerald-300 text-sm">Regions Covered</p>
+                  </div>
+                  <div className="bg-emerald-900/40 p-6 rounded-2xl border border-emerald-500/20 text-center">
+                    <h3 className="text-3xl font-bold text-white mb-2">24/7</h3>
+                    <p className="text-emerald-300 text-sm">Expert Support</p>
+                  </div>
+                  <div className="bg-emerald-900/40 p-6 rounded-2xl border border-emerald-500/20 text-center">
+                    <h3 className="text-3xl font-bold text-white mb-2">100%</h3>
+                    <p className="text-emerald-300 text-sm">Secure Trade</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Services Section */}
+          <section id="services" className="py-20 scroll-mt-20">
+            <div className="text-center mb-12">
+              <h2 className="text-4xl font-bold text-white mb-4">Our Services</h2>
+              <p className="text-emerald-200 text-lg max-w-2xl mx-auto">
+                Comprehensive solutions tailored for the modern agricultural ecosystem.
+              </p>
+            </div>
+            <div className="grid md:grid-cols-3 gap-8">
+              {[
+                { icon: ShoppingCart, title: "B2B Marketplace", desc: "A secure digital marketplace connecting farmers directly with bulk buyers, eliminating middlemen and maximizing profits." },
+                { icon: TrendingUp, title: "Market Analytics", desc: "Real-time crop pricing and market demand analytics to help you make informed selling and planting decisions." },
+                { icon: Users, title: "Expert Consultations", desc: "One-on-one virtual consultations with certified agronomists to optimize your farm's yield and health." },
+                { icon: Shield, title: "Secure Payments", desc: "Escrow-style payment protection ensuring that both buyers and sellers are fully protected during transactions." },
+                { icon: Sprout, title: "Farm Management", desc: "Digital tools to track your inventory, harvest cycles, and farm expenses all from a single dashboard." },
+                { icon: GraduationCap, title: "Knowledge Hub", desc: "Access to a vast library of modern farming techniques, weather advisories, and sustainable agriculture guides." }
+              ].map((service, idx) => (
+                <div key={idx} className="bg-white/10 backdrop-blur-sm p-8 rounded-2xl border border-white/20 hover:bg-white/20 transition-all hover:-translate-y-1">
+                  <service.icon className="w-10 h-10 text-emerald-400 mb-4" />
+                  <h3 className="text-xl font-bold text-white mb-3">{service.title}</h3>
+                  <p className="text-emerald-100/90 text-sm leading-relaxed">{service.desc}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Contact Us Section */}
+          <section id="contact" className="py-20 scroll-mt-20">
+            <div className="bg-gradient-to-br from-emerald-900/80 to-emerald-800/80 backdrop-blur-md rounded-3xl p-8 md:p-12 border border-emerald-500/30 shadow-2xl">
+              <div className="grid md:grid-cols-2 gap-12">
+                <div>
+                  <h2 className="text-4xl font-bold text-white mb-6 flex items-center gap-3">
+                    Contact Us
+                  </h2>
+                  <p className="text-emerald-100 text-lg mb-8">
+                    Have questions about our platform or need assistance? Our dedicated support team is here to help you grow.
+                  </p>
+
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                        <MapPin className="w-6 h-6 text-emerald-400" />
+                      </div>
+                      <div>
+                        <h4 className="text-white font-bold">Office Address</h4>
+                        <p className="text-emerald-200">AgriHub Towers, Nairobi, Kenya</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Phone className="w-6 h-6 text-emerald-400" />
+                      </div>
+                      <div>
+                        <h4 className="text-white font-bold">Phone Number</h4>
+                        <p className="text-emerald-200">+254 700 000 000</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Mail className="w-6 h-6 text-emerald-400" />
+                      </div>
+                      <div>
+                        <h4 className="text-white font-bold">Email Address</h4>
+                        <p className="text-emerald-200">support@fbeconnect.com</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contact Form */}
+                <form className="bg-white/5 rounded-2xl p-6 border border-white/10 space-y-4" onSubmit={(e) => { e.preventDefault(); toast.success('Message sent successfully!'); }}>
+                  <div>
+                    <label className="block text-sm font-medium text-emerald-100 mb-2">Your Name</label>
+                    <input type="text" className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-400" required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-emerald-100 mb-2">Email Address</label>
+                    <input type="email" className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-400" required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-emerald-100 mb-2">Message</label>
+                    <textarea rows={4} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none" required></textarea>
+                  </div>
+                  <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg">
+                    Send Message
+                  </button>
+                </form>
+              </div>
+            </div>
+          </section>
 
           {/* Testimonials */}
           <div className="py-20">
@@ -572,6 +750,43 @@ export default function Landing() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* FAQ Section */}
+          <div className="py-20 mb-10">
+            <h2 className="text-4xl font-bold text-white text-center mb-12">
+              Frequently Asked Questions
+            </h2>
+            <div className="max-w-3xl mx-auto space-y-4">
+              {faqs.map((faq, index) => {
+                const isOpen = openFaqIndex === index;
+                return (
+                  <div
+                    key={index}
+                    className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl overflow-hidden transition-all duration-200"
+                  >
+                    <button
+                      onClick={() => setOpenFaqIndex(isOpen ? null : index)}
+                      className="w-full px-6 py-5 flex items-center justify-between text-left focus:outline-none"
+                    >
+                      <span className="text-lg font-bold text-white pr-4">{faq.question}</span>
+                      <ChevronDown
+                        className={`w-6 h-6 text-emerald-400 flex-shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
+                      />
+                    </button>
+
+                    <div
+                      className={`px-6 overflow-hidden transition-all duration-300 ease-in-out ${isOpen ? 'max-h-48 pb-5 opacity-100' : 'max-h-0 opacity-0'
+                        }`}
+                    >
+                      <p className="text-emerald-100/90 leading-relaxed text-sm md:text-base">
+                        {faq.answer}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

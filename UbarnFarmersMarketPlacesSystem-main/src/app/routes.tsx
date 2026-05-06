@@ -23,12 +23,27 @@ import RegisterFarmer from "./pages/RegisterFarmer";
 import RegisterBuyer from "./pages/RegisterBuyer";
 import RegisterExpert from "./pages/RegisterExpert";
 import Cart from "./pages/Cart";
+import NotFound from "./pages/NotFound";
+import ForgotPassword from "./pages/ForgotPassword";
+import UpdatePassword from "./pages/UpdatePassword";
 
+
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
 
 export const router = createBrowserRouter([
   {
     path: "/",
     Component: Landing,
+    errorElement: <NotFound />,
+  },
+  {
+    path: "/privacy",
+    Component: Privacy,
+  },
+  {
+    path: "/terms",
+    Component: Terms,
   },
   {
     path: "/login",
@@ -37,6 +52,14 @@ export const router = createBrowserRouter([
   {
     path: "/register",
     Component: Register,
+  },
+  {
+    path: "/forgot-password",
+    Component: ForgotPassword,
+  },
+  {
+    path: "/update-password",
+    Component: UpdatePassword,
   },
   {
     path: "/register/farmer",
@@ -71,6 +94,13 @@ export const router = createBrowserRouter([
       { path: "profile", Component: Profile },
       { path: "expert-knowledge", Component: ExpertKnowledge },
       { path: "cart", Component: Cart },
+      { path: "*", Component: NotFound },
     ],
   },
-]);
+  {
+    path: "*",
+    Component: NotFound,
+  },
+], {
+  basename: "/fbeconnect"
+});

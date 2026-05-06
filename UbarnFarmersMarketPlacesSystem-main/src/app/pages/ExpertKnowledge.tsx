@@ -26,7 +26,7 @@ export default function ExpertKnowledge() {
   const prevSlide = () => setCarouselIdx(i => (i - 1 + carouselSlides.length) % carouselSlides.length);
 
   useEffect(() => {
-    const t = setInterval(nextSlide, 4500);
+    const t = setInterval(nextSlide, 8000);
     return () => clearInterval(t);
   }, [nextSlide]);
 
@@ -45,11 +45,59 @@ export default function ExpertKnowledge() {
     toast.info("Feedback noted.");
   };
 
+  const [commQuestions, setCommQuestions] = useState([
+    {
+      id: 1,
+      user: "Farmer John",
+      question: "What is the best time to plant maize in Central Kenya?",
+      answers: [
+        { author: "Dr. Samuel Njau", text: "Ideally between March and April for the long rains.", type: "Expert" },
+        { author: "Farmer Peter", text: "I've had success planting in mid-March.", type: "Farmer" }
+      ],
+      date: "1 day ago"
+    },
+    {
+      id: 2,
+      user: "Alice W.",
+      question: "How do I naturally get rid of aphids on my kales?",
+      answers: [
+        { author: "Dr. Emily Wangari", text: "Use a mixture of neem oil and soapy water.", type: "Expert" }
+      ],
+      date: "3 days ago"
+    }
+  ]);
+  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [newAnswer, setNewAnswer] = useState("");
+
   const handleSubmitQuestion = () => {
     if (!question.trim()) { toast.error("Please enter your question."); return; }
-    toast.success("Question submitted! An expert will respond within 48 hours.");
+    const newQ = {
+      id: Date.now(),
+      user: "You",
+      question: question,
+      answers: [],
+      date: "Just now"
+    };
+    setCommQuestions([newQ, ...commQuestions]);
+    toast.success("Question posted to the community!");
     setQuestion("");
     setShowQuestionModal(false);
+  };
+
+  const handleReply = (qId: number) => {
+    if (!newAnswer.trim()) { toast.error("Please type an answer."); return; }
+    setCommQuestions(prev => prev.map(q => {
+      if (q.id === qId) {
+        return {
+          ...q,
+          answers: [...q.answers, { author: "You", text: newAnswer, type: "Farmer" }]
+        };
+      }
+      return q;
+    }));
+    toast.success("Your answer has been posted!");
+    setNewAnswer("");
+    setReplyingTo(null);
   };
 
   const filtered = articles.filter(a => {
@@ -80,7 +128,7 @@ export default function ExpertKnowledge() {
       {/* ── Carousel ── */}
       <div className="relative mb-8 rounded-2xl overflow-hidden h-64 md:h-80 shadow-2xl">
         <div className="absolute inset-0 bg-cover bg-center transition-all duration-700" style={{ backgroundImage: `url(${slide.image})` }} />
-        <div className={`absolute inset-0 bg-gradient-to-r ${slide.gradient} opacity-80`} />
+        <div className={`absolute inset-0 bg-gradient-to-r ${slide.gradient} opacity-40`} />
         <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-6">
           <div className="text-5xl mb-3">{slide.emoji}</div>
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">{slide.title}</h1>
@@ -227,6 +275,66 @@ export default function ExpertKnowledge() {
             </ol>
           </div>
 
+          {/* Community Q&A */}
+          <div className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 p-6">
+            <h2 className="text-xl font-bold text-white mb-5">Community Q&A</h2>
+            <div className="space-y-6">
+              {commQuestions.map(q => (
+                <div key={q.id} className="border-b border-white/10 last:border-0 pb-6 last:pb-0">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-emerald-400 text-xs font-medium">{q.user} asked:</span>
+                    <span className="text-gray-500 text-[10px]">{q.date}</span>
+                  </div>
+                  <p className="text-white font-semibold mb-4">{q.question}</p>
+                  <div className="space-y-3 pl-4 border-l-2 border-emerald-500/30 mb-4">
+                    {q.answers.map((a, idx) => (
+                      <div key={idx} className="bg-white/5 rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded ${a.type === 'Expert' ? 'bg-emerald-600 text-white' : 'bg-blue-600 text-white'}`}>
+                            {a.type}
+                          </span>
+                          <span className="text-emerald-300 text-xs font-bold">{a.author}</span>
+                        </div>
+                        <p className="text-emerald-100 text-sm">{a.text}</p>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {replyingTo === q.id ? (
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        value={newAnswer} 
+                        onChange={e => setNewAnswer(e.target.value)}
+                        placeholder="Type your answer..."
+                        className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                      <button 
+                        onClick={() => handleReply(q.id)}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all"
+                      >
+                        Post
+                      </button>
+                      <button 
+                        onClick={() => { setReplyingTo(null); setNewAnswer(""); }}
+                        className="bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg text-xs transition-all"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={() => setReplyingTo(q.id)}
+                      className="text-emerald-400 hover:text-emerald-300 text-xs font-bold flex items-center gap-1 transition-colors"
+                    >
+                      <Send className="w-3 h-3" /> Reply as Farmer
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="text-center">
             <button onClick={() => { setShowAll(true); toast.success("Showing all articles!"); }} className="px-12 py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-lg font-bold shadow-lg hover:shadow-emerald-500/25 transition-all">
               Browse All Articles
@@ -240,10 +348,10 @@ export default function ExpertKnowledge() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-emerald-900 border border-emerald-700 rounded-2xl max-w-md w-full p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white font-bold text-lg">Ask an Expert</h3>
+              <h3 className="text-white font-bold text-lg">Ask the Community</h3>
               <button onClick={() => setShowQuestionModal(false)}><X className="w-5 h-5 text-emerald-400 hover:text-white" /></button>
             </div>
-            <p className="text-emerald-300 text-sm mb-4">Submit your farming question and get an answer from our expert community within 48 hours.</p>
+            <p className="text-emerald-300 text-sm mb-4">Submit your farming question and get answers from our expert community and experienced farmers within 48 hours.</p>
             <textarea value={question} onChange={e => setQuestion(e.target.value)} placeholder="Describe your farming question in detail..." rows={5} className="w-full bg-white/10 border border-white/20 text-white placeholder-emerald-400/60 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400 text-sm resize-none mb-4" />
             <div className="flex gap-3">
               <button onClick={() => setShowQuestionModal(false)} className="flex-1 py-2.5 border border-white/20 text-emerald-200 rounded-xl hover:bg-white/10 transition-all text-sm">Cancel</button>

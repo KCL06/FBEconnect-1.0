@@ -1,27 +1,30 @@
-import { Link, Outlet, useLocation } from "react-router";
-import { Home, Sprout, Package, TrendingUp, MessageSquare, ShoppingCart, Receipt, Bell, LayoutDashboard, Star, MapPin, MessageCircle, Settings, Menu, X, User, BookOpen, ChevronRight, ChevronLeft, Leaf } from "lucide-react";
+import { Link, Outlet, useLocation, useNavigate } from "react-router";
+import { Home, Sprout, Package, TrendingUp, MessageSquare, ShoppingCart, Receipt, Bell, LayoutDashboard, Star, MapPin, MessageCircle, Settings, Menu, X, User, BookOpen, ChevronRight, ChevronLeft, Leaf, LogOut } from "lucide-react";
 import svgPaths from "../../imports/svg-ld7y1c2a9i";
-import { useState } from "react";
+import { supabase } from "../../lib/supabase";
+import { useState, useEffect } from "react";
 import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
 import Logo from "./Logo";
+import { useLanguage } from "../context/LanguageContext";
 
 const menuItems = [
-  { path: "/app", label: "Dashboard", icon: Home },
-  { path: "/app/farm-records", label: "My Farm Records", icon: Sprout },
-  { path: "/app/products", label: "Products", icon: Package },
-  { path: "/app/market-prices", label: "Market Prices", icon: TrendingUp },
-  { path: "/app/consultations", label: "Consultations", icon: MessageSquare },
-  { path: "/app/messages", label: "Messages", icon: MessageCircle },
-  { path: "/app/marketplace", label: "Market Place", icon: ShoppingCart },
-  { path: "/app/transaction", label: "Transaction", icon: Receipt },
-  { path: "/app/notification", label: "Notifications", icon: Bell },
-  { path: "/app/admin", label: "Admin Dashboard", icon: LayoutDashboard },
-  { path: "/app/reviews", label: "Reviews & Ratings", icon: Star },
-  { path: "/app/order-tracking", label: "Order Tracking", icon: MapPin },
-  { path: "/app/user-feedback", label: "User Feedback", icon: MessageCircle },
-  { path: "/app/expert-knowledge", label: "Expert Knowledge", icon: BookOpen },
-  { path: "/app/cart", label: "My Cart", icon: ShoppingCart },
-  { path: "/app/profile", label: "My Profile", icon: User },
+  { path: "/app", tKey: "dashboard", label: "Dashboard", icon: Home, roles: ["farmer", "buyer", "expert", "admin"] },
+  { path: "/app/farm-records", tKey: "farm_records", label: "My Farm Records", icon: Sprout, roles: ["farmer"] },
+  { path: "/app/products", tKey: "products", label: "Products", icon: Package, roles: ["farmer"] },
+  { path: "/app/market-prices", tKey: "price", label: "Market Prices", icon: TrendingUp, roles: ["farmer", "buyer"] },
+  { path: "/app/consultations", tKey: "consultations", label: "Consultations", icon: MessageSquare, roles: ["farmer", "expert"] },
+  { path: "/app/messages", tKey: "messages", label: "Messages", icon: MessageCircle, roles: ["farmer", "buyer", "expert", "admin"] },
+  { path: "/app/marketplace", tKey: "marketplace", label: "Market Place", icon: ShoppingCart, roles: ["farmer", "buyer"] },
+  { path: "/app/transaction", label: "Transaction", icon: Receipt, roles: ["farmer", "buyer", "expert", "admin"] },
+  { path: "/app/notification", label: "Notifications", icon: Bell, roles: ["farmer", "buyer", "expert", "admin"] },
+  { path: "/app/admin", label: "Admin Dashboard", icon: LayoutDashboard, roles: ["admin"] },
+  { path: "/app/reviews", tKey: "reviews", label: "Reviews & Ratings", icon: Star, roles: ["farmer", "buyer", "expert", "admin"] },
+  { path: "/app/order-tracking", tKey: "orders", label: "Order Tracking", icon: MapPin, roles: ["farmer", "buyer"] },
+  { path: "/app/user-feedback", label: "User Feedback", icon: MessageCircle, roles: ["admin"] },
+  { path: "/app/expert-knowledge", label: "Expert Knowledge", icon: BookOpen, roles: ["farmer", "buyer", "expert", "admin"] },
+  { path: "/app/cart", label: "My Cart", icon: ShoppingCart, roles: ["buyer"] },
+  { path: "/app/profile", label: "My Profile", icon: User, roles: ["farmer", "buyer", "expert", "admin"] },
 ];
 
 function FarmerIcon() {
@@ -56,13 +59,6 @@ function FarmerIcon() {
   );
 }
 
-function getPageTitle(pathname: string): string {
-  const found = menuItems.find((item) => item.path === pathname);
-  if (found) return found.label;
-  if (pathname === "/app/settings") return "Settings";
-  return "FBEconnect";
-}
-
 function CartBadge() {
   const { totalItems } = useCart();
   return (
@@ -78,11 +74,38 @@ function CartBadge() {
 }
 
 export default function Layout() {
-
   const location = useLocation();
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [notifCount, setNotifCount] = useState(0);
+  const { profile, signOut, loading } = useAuth();
+  const { t } = useLanguage();
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", profile.id)
+      .eq("is_read", false)
+      .then(({ count }) => setNotifCount(count || 0));
+  }, [profile?.id]);
+
+  const getPageTitle = (pathname: string): string => {
+    const found = menuItems.find((item) => item.path === pathname);
+    if (found && found.tKey) return t(found.tKey as any);
+    if (found) return found.label;
+    if (pathname === "/app/settings") return t("settings");
+    return "FBEconnect";
+  };
+
   const pageTitle = getPageTitle(location.pathname);
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/login");
+  };
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-700 relative">
@@ -126,9 +149,9 @@ export default function Layout() {
                 <FarmerIcon />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-white text-sm truncate">Hillary Brian</p>
-                <p className="text-xs text-emerald-300 truncate">Green Acres Farm</p>
-                <span className="inline-block mt-1 text-xs bg-emerald-700/60 text-emerald-300 px-2 py-0.5 rounded-full">Farmer</span>
+                <p className="font-semibold text-white text-sm truncate">{profile?.full_name || "My Account"}</p>
+                <p className="text-xs text-emerald-300 truncate">{profile?.email || ""}</p>
+                <span className="inline-block mt-1 text-xs bg-emerald-700/60 text-emerald-300 px-2 py-0.5 rounded-full capitalize">{profile?.role || "user"}</span>
               </div>
             </Link>
           </div>
@@ -138,19 +161,22 @@ export default function Layout() {
         <nav className="flex-1 overflow-y-auto p-2">
           {!isCollapsed && <p className="text-emerald-500 text-xs font-semibold uppercase tracking-widest px-3 mb-2">Main Menu</p>}
           <ul className="space-y-0.5">
-            {menuItems.map((item) => {
+            {loading ? (
+              <li className="px-3 py-4 text-emerald-400/60 text-sm text-center animate-pulse">Loading menu...</li>
+            ) : menuItems.filter(item => profile?.role && item.roles.includes(profile.role)).map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
+              const label = item.tKey ? t(item.tKey as any) : item.label;
               return (
                 <li key={item.path}>
                   <Link
                     to={item.path}
                     onClick={() => setIsSidebarOpen(false)}
-                    title={isCollapsed ? item.label : undefined}
+                    title={isCollapsed ? label : undefined}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group ${isActive ? "bg-amber-700/90 text-white shadow-lg" : "text-emerald-200 hover:bg-emerald-700/40 hover:text-white"} ${isCollapsed ? 'justify-center' : ''}`}
                   >
                     <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-amber-200" : "text-emerald-400 group-hover:text-white"}`} />
-                    {!isCollapsed && <span className="text-sm font-medium truncate">{item.label}</span>}
+                    {!isCollapsed && <span className="text-sm font-medium truncate">{label}</span>}
                     {!isCollapsed && isActive && <ChevronRight className="w-3 h-3 ml-auto text-amber-200" />}
                   </Link>
                 </li>
@@ -164,17 +190,19 @@ export default function Layout() {
           <Link
             to="/app/settings"
             onClick={() => setIsSidebarOpen(false)}
-            title={isCollapsed ? 'Settings' : undefined}
+            title={isCollapsed ? t('settings') : undefined}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${location.pathname === "/app/settings" ? "bg-amber-700/90 text-white shadow-lg" : "text-emerald-200 hover:bg-emerald-700/40 hover:text-white"} ${isCollapsed ? 'justify-center' : ''}`}
           >
             <Settings className="w-4 h-4 flex-shrink-0" />
-            {!isCollapsed && <span className="text-sm font-medium">Settings</span>}
+            {!isCollapsed && <span className="text-sm font-medium">{t('settings')}</span>}
           </Link>
           {!isCollapsed && (
             <div className="flex items-center justify-around mt-3 pt-3 border-t border-emerald-700/30">
               <Link to="/" className="text-emerald-400 hover:text-white text-xs transition-colors">Home</Link>
               <Link to="/app/notification" className="text-emerald-400 hover:text-white text-xs transition-colors">Alerts</Link>
-              <Link to="/login" className="text-emerald-400 hover:text-white text-xs transition-colors">Logout</Link>
+              <button onClick={handleLogout} className="flex items-center gap-1 text-red-400 hover:text-red-300 text-xs transition-colors">
+                <LogOut className="w-3 h-3" />{t('log_out')}
+              </button>
             </div>
           )}
         </div>
@@ -193,16 +221,17 @@ export default function Layout() {
           <div className="flex items-center gap-3">
             <nav className="flex items-center gap-1">
               {[
-                { path: "/app", label: "Dashboard", icon: Home },
-                { path: "/app/marketplace", label: "Market", icon: ShoppingCart },
-                { path: "/app/expert-knowledge", label: "Knowledge", icon: BookOpen },
-                { path: "/app/market-prices", label: "Prices", icon: TrendingUp },
-              ].map((item) => {
+                { path: "/app", tKey: "dashboard", label: "Dashboard", icon: Home, roles: ["farmer", "buyer", "expert", "admin"] },
+                { path: "/app/marketplace", tKey: "marketplace", label: "Market", icon: ShoppingCart, roles: ["farmer", "buyer"] },
+                { path: "/app/expert-knowledge", label: "Knowledge", icon: BookOpen, roles: ["farmer", "expert"] },
+                { path: "/app/market-prices", tKey: "price", label: "Prices", icon: TrendingUp, roles: ["farmer", "buyer"] },
+              ].filter(item => !profile?.role || item.roles.includes(profile.role)).map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path;
+                const label = item.tKey ? t(item.tKey as any) : item.label;
                 return (
                   <Link key={item.path} to={item.path} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isActive ? "bg-emerald-700 text-white" : "text-emerald-300 hover:bg-emerald-800/60 hover:text-white"}`}>
-                    <Icon className="w-3.5 h-3.5" />{item.label}
+                    <Icon className="w-3.5 h-3.5" />{label}
                   </Link>
                 );
               })}
@@ -210,7 +239,9 @@ export default function Layout() {
             <div className="w-px h-6 bg-emerald-700" />
             <Link to="/app/notification" className="relative text-emerald-300 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-emerald-800/60">
               <Bell className="w-5 h-5" />
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-xs flex items-center justify-center text-white font-bold">3</span>
+              {notifCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-xs flex items-center justify-center text-white font-bold">{notifCount > 9 ? "9+" : notifCount}</span>
+              )}
             </Link>
             <Link to="/app/settings" className="text-emerald-300 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-emerald-800/60">
               <Settings className="w-5 h-5" />
@@ -219,7 +250,7 @@ export default function Layout() {
               <div className="w-7 h-7 bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-full flex items-center justify-center ring-2 ring-emerald-500/50">
                 <User className="w-3.5 h-3.5 text-white" />
               </div>
-              <span className="text-xs font-medium">Hillary Brian</span>
+              <span className="text-xs font-medium">Account</span>
             </Link>
           </div>
         </div>
@@ -239,7 +270,9 @@ export default function Layout() {
             <div className="flex items-center gap-2">
               <Link to="/app/notification" className="relative text-white p-1">
                 <Bell className="w-5 h-5" />
-                <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-red-500 rounded-full text-xs flex items-center justify-center text-white">3</span>
+                {notifCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-red-500 rounded-full text-xs flex items-center justify-center text-white">{notifCount > 9 ? "9+" : notifCount}</span>
+                )}
               </Link>
               <CartBadge />
               <Link to="/app/profile" className="text-white p-1"><User className="w-5 h-5" /></Link>
@@ -259,21 +292,24 @@ export default function Layout() {
           <div className="max-w-7xl mx-auto px-6">
             <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 mb-5">
               {[
-                { to: "/app", label: "Dashboard" },
-                { to: "/app/farm-records", label: "Farm Records" },
-                { to: "/app/marketplace", label: "Marketplace" },
-                { to: "/app/market-prices", label: "Market Prices" },
-                { to: "/app/expert-knowledge", label: "Expert Knowledge" },
-                { to: "/app/consultations", label: "Consultations" },
-                { to: "/app/messages", label: "Messages" },
-                { to: "/app/transaction", label: "Transactions" },
-                { to: "/app/order-tracking", label: "Order Tracking" },
-                { to: "/app/settings", label: "Settings" },
-              ].map((link) => (
-                <Link key={link.to} to={link.to} className="text-emerald-300 hover:text-white text-sm transition-colors hover:underline">
-                  {link.label}
-                </Link>
-              ))}
+                { to: "/app", tKey: "dashboard", label: "Dashboard", roles: ["farmer", "buyer", "expert", "admin"] },
+                { to: "/app/farm-records", tKey: "farm_records", label: "Farm Records", roles: ["farmer"] },
+                { to: "/app/marketplace", tKey: "marketplace", label: "Marketplace", roles: ["farmer", "buyer"] },
+                { to: "/app/market-prices", tKey: "price", label: "Market Prices", roles: ["farmer", "buyer"] },
+                { to: "/app/expert-knowledge", label: "Expert Knowledge", roles: ["farmer", "expert"] },
+                { to: "/app/consultations", tKey: "consultations", label: "Consultations", roles: ["farmer", "expert"] },
+                { to: "/app/messages", tKey: "messages", label: "Messages", roles: ["farmer", "buyer", "expert", "admin"] },
+                { to: "/app/transaction", tKey: "orders", label: "Transactions", roles: ["farmer", "buyer", "expert", "admin"] },
+                { to: "/app/order-tracking", tKey: "orders", label: "Order Tracking", roles: ["farmer", "buyer"] },
+                { to: "/app/settings", tKey: "settings", label: "Settings", roles: ["farmer", "buyer", "expert", "admin"] },
+              ].filter(link => !profile?.role || link.roles.includes(profile.role as any)).map((link) => {
+                 const label = link.tKey ? t(link.tKey as any) : link.label;
+                 return (
+                  <Link key={link.to} to={link.to} className="text-emerald-300 hover:text-white text-sm transition-colors hover:underline">
+                    {label}
+                  </Link>
+                 )
+              })}
             </div>
             <div className="border-t border-emerald-800 pt-5 flex flex-col md:flex-row justify-between items-center gap-3">
               <div className="flex items-center gap-2">

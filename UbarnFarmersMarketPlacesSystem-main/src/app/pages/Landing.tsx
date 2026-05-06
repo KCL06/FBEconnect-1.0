@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router";
-import { Sprout, TrendingUp, Users, ShoppingCart, CheckCircle, ArrowRight, GraduationCap, Eye, EyeOff, Shield, ChevronDown, MapPin, Mail, Phone, Leaf } from "lucide-react";
+import { Sprout, TrendingUp, Users, ShoppingCart, CheckCircle, ArrowRight, GraduationCap, Eye, EyeOff, Shield, ChevronDown, MapPin, Mail, Phone, Leaf, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
@@ -122,7 +122,9 @@ export default function Landing() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!selectedRole) {
@@ -130,14 +132,22 @@ export default function Landing() {
       return;
     }
 
-    const roleText = selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1);
-
     if (isLogin) {
-      toast.success(`Welcome back to FBEconnect, ${roleText}!`);
-      navigate("/app");
+      // Real Supabase login
+      setIsSubmitting(true);
+      try {
+        await signIn(formData.email, formData.password);
+        toast.success("Welcome back to FBEconnect!");
+        navigate("/app");
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Login failed. Please check your credentials.";
+        toast.error(msg);
+      } finally {
+        setIsSubmitting(false);
+      }
     } else {
-      toast.success(`Account created successfully! Welcome to FBEconnect, ${roleText}!`);
-      navigate("/app");
+      // Redirect to the proper role-specific registration page
+      navigate(`/register/${selectedRole}`);
     }
   };
 
@@ -553,18 +563,24 @@ export default function Landing() {
                           <input type="checkbox" className="mr-2 rounded" />
                           Remember me
                         </label>
-                        <a href="#" className="text-emerald-300 hover:text-white">
+                        <Link to="/forgot-password" className="text-emerald-300 hover:text-white transition-colors">
                           Forgot password?
-                        </a>
+                        </Link>
                       </div>
                     )}
 
                     <button
                       type="submit"
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-lg transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                      disabled={isSubmitting}
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
                     >
-                      {isLogin ? "Login to FBEconnect" : "Create Account"}
-                      <ArrowRight className="w-5 h-5" />
+                      {isSubmitting ? (
+                        <><Loader2 className="w-5 h-5 animate-spin" /> Signing in...</>
+                      ) : isLogin ? (
+                        <>Login to FBEconnect <ArrowRight className="w-5 h-5" /></>
+                      ) : (
+                        <>Continue to Register <ArrowRight className="w-5 h-5" /></>
+                      )}
                     </button>
 
                     {!isLogin && (

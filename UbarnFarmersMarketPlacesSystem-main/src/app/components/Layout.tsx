@@ -320,9 +320,9 @@ export default function Layout() {
               </div>
               <p className="text-emerald-400 text-sm text-center">&copy; {new Date().getFullYear()} FBEconnect. Empowering agricultural communities.</p>
               <div className="flex gap-4">
-                <a href="#" className="text-emerald-400 hover:text-white text-xs transition-colors">Privacy</a>
-                <a href="#" className="text-emerald-400 hover:text-white text-xs transition-colors">Terms</a>
-                <a href="#" className="text-emerald-400 hover:text-white text-xs transition-colors">Support</a>
+                <Link to="/privacy" className="text-emerald-400 hover:text-white text-xs transition-colors">Privacy</Link>
+                <Link to="/terms" className="text-emerald-400 hover:text-white text-xs transition-colors">Terms</Link>
+                <a href="mailto:support@fbeconnect.com" className="text-emerald-400 hover:text-white text-xs transition-colors">Support</a>
               </div>
             </div>
           </div>

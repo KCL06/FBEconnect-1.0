@@ -1,3 +1,4 @@
+import React from "react";
 import { Link, useLocation } from "react-router";
 import { Menu, X, Globe } from "lucide-react";
 import { useState } from "react";
@@ -17,12 +18,19 @@ export default function Header({ isAuthenticated = false }: HeaderProps) {
     setLanguage(language === 'en' ? 'sw' : 'en');
   };
 
-  const navLinks = [
+  const navLinks: { to: string; label: string; isHash?: boolean }[] = [
     { to: "/", label: "Home" },
-    { to: "#about", label: "About Us" },
-    { to: "#services", label: "Services" },
-    { to: "#contact", label: "Contact" },
+    { to: "#about", label: "About Us", isHash: true },
+    { to: "#services", label: "Services", isHash: true },
+    { to: "#contact", label: "Contact", isHash: true },
   ];
+
+  const handleAnchorClick = (e: React.MouseEvent<HTMLAnchorElement>, hash: string) => {
+    e.preventDefault();
+    const id = hash.replace("#", "");
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth" });
+  };
 
   return (
     <header className="sticky top-0 z-50 bg-emerald-900/95 backdrop-blur-sm border-b border-emerald-700/60 shadow-lg">
@@ -36,8 +44,17 @@ export default function Header({ isAuthenticated = false }: HeaderProps) {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => {
-              const isActive = location.pathname === link.to;
-              return (
+              const isActive = !link.isHash && location.pathname === link.to;
+              return link.isHash ? (
+                <a
+                  key={link.to}
+                  href={link.to}
+                  onClick={(e) => handleAnchorClick(e, link.to)}
+                  className="px-4 py-2 rounded-lg text-sm font-medium transition-all text-emerald-100 hover:bg-emerald-800/60 hover:text-white"
+                >
+                  {link.label}
+                </a>
+              ) : (
                 <Link
                   key={link.to}
                   to={link.to}
@@ -112,8 +129,17 @@ export default function Header({ isAuthenticated = false }: HeaderProps) {
           <div className="md:hidden py-4 border-t border-emerald-700/50">
             <nav className="flex flex-col gap-1">
               {navLinks.map((link) => {
-                const isActive = location.pathname === link.to;
-                return (
+                const isActive = !link.isHash && location.pathname === link.to;
+                return link.isHash ? (
+                  <a
+                    key={link.to}
+                    href={link.to}
+                    onClick={(e) => { handleAnchorClick(e, link.to); setIsMobileMenuOpen(false); }}
+                    className="px-4 py-3 rounded-lg text-sm font-medium transition-all text-emerald-100 hover:bg-emerald-800/60 hover:text-white"
+                  >
+                    {link.label}
+                  </a>
+                ) : (
                   <Link
                     key={link.to}
                     to={link.to}

@@ -1,3 +1,4 @@
+import React from "react";
 import { Link } from "react-router";
 import { Mail, Phone, Facebook, Twitter, Instagram, MapPin } from "lucide-react";
 import Logo from "./Logo";
@@ -10,6 +11,12 @@ const TiktokIcon = ({ className }: { className?: string }) => (
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+
+  const scrollTo = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    e.preventDefault();
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth" });
+  };
 
   return (
     <footer className="bg-gradient-to-br from-emerald-950 to-emerald-900 text-white border-t border-emerald-700/50">
@@ -57,22 +64,34 @@ export default function Footer() {
             </h3>
             <ul className="space-y-2">
               {[
-                { to: "/", label: "Home" },
-                { to: "#about", label: "About Us" },
-                { to: "#services", label: "Services" },
-                { to: "#contact", label: "Contact Us" },
-                { to: "/login", label: "Login" },
-                { to: "/register", label: "Get Started" },
-              ].map((link) => (
-                <li key={link.to}>
-                  <Link
-                    to={link.to}
-                    className="text-emerald-300 hover:text-white transition-colors text-sm hover:underline"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
+                { to: "/", label: "Home", isHash: false },
+                { to: "about", label: "About Us", isHash: true },
+                { to: "services", label: "Services", isHash: true },
+                { to: "contact", label: "Contact Us", isHash: true },
+                { to: "/login", label: "Login", isHash: false },
+                { to: "/register", label: "Get Started", isHash: false },
+              ].map((link) =>
+                link.isHash ? (
+                  <li key={link.to}>
+                    <a
+                      href={`#${link.to}`}
+                      onClick={(e) => scrollTo(e, link.to)}
+                      className="text-emerald-300 hover:text-white transition-colors text-sm hover:underline cursor-pointer"
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                ) : (
+                  <li key={link.to}>
+                    <Link
+                      to={link.to}
+                      className="text-emerald-300 hover:text-white transition-colors text-sm hover:underline"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                )
+              )}
             </ul>
           </div>
 

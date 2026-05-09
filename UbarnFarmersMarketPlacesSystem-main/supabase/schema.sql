@@ -14,7 +14,7 @@ create table if not exists public.profiles (
   created_at  timestamptz default now()
 );
 alter table public.profiles enable row level security;
-create policy "Users can view own profile"  on public.profiles for select using (auth.uid() = id);
+create policy "Anyone can view profiles"  on public.profiles for select using (true);
 create policy "Users can update own profile" on public.profiles for update using (auth.uid() = id);
 
 -- 2. FARMER PROFILES
@@ -24,11 +24,19 @@ create table if not exists public.farmer_profiles (
   farm_location    text,
   farming_type     text,
   years_experience integer,
-  national_id      text,
   is_verified      boolean default false
 );
 alter table public.farmer_profiles enable row level security;
+create policy "Anyone can view farmer profiles" on public.farmer_profiles for select using (true);
 create policy "Farmers manage own profile" on public.farmer_profiles for all using (auth.uid() = id);
+
+create table if not exists public.farmer_verifications (
+  id               uuid references public.profiles on delete cascade primary key,
+  national_id      text,
+  created_at       timestamptz default now()
+);
+alter table public.farmer_verifications enable row level security;
+create policy "Farmers manage own verification data" on public.farmer_verifications for all using (auth.uid() = id);
 
 -- 3. BUYER PROFILES
 create table if not exists public.buyer_profiles (
@@ -39,6 +47,7 @@ create table if not exists public.buyer_profiles (
   account_type       text
 );
 alter table public.buyer_profiles enable row level security;
+create policy "Anyone can view buyer profiles" on public.buyer_profiles for select using (true);
 create policy "Buyers manage own profile" on public.buyer_profiles for all using (auth.uid() = id);
 
 -- 4. EXPERT PROFILES
@@ -51,6 +60,7 @@ create table if not exists public.expert_profiles (
   is_verified      boolean default false
 );
 alter table public.expert_profiles enable row level security;
+create policy "Anyone can view expert profiles" on public.expert_profiles for select using (true);
 create policy "Experts manage own profile" on public.expert_profiles for all using (auth.uid() = id);
 
 -- 5. PRODUCTS (marketplace listings)
@@ -205,14 +215,27 @@ create policy "Users see own notifications" on public.notifications for all usin
 -- ══════════════════════════════════════════════════════
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  user_role text;
 begin
+  user_role := coalesce(new.raw_user_meta_data->>'role', 'buyer');
+
   insert into public.profiles (id, email, full_name, role)
   values (
     new.id,
     new.email,
     coalesce(new.raw_user_meta_data->>'full_name', ''),
-    coalesce(new.raw_user_meta_data->>'role', 'buyer')
+    user_role
   );
+
+  if user_role = 'farmer' then
+    insert into public.farmer_profiles (id) values (new.id);
+  elsif user_role = 'expert' then
+    insert into public.expert_profiles (id) values (new.id);
+  else
+    insert into public.buyer_profiles (id) values (new.id);
+  end if;
+
   return new;
 end;
 $$;

@@ -71,6 +71,11 @@ export async function saveFarmerProfile(userId: string, profile: Record<string, 
   if (error) throw error;
 }
 
+export async function saveFarmerVerification(userId: string, data: Record<string, unknown>) {
+  const { error } = await supabase.from("farmer_verifications").upsert({ id: userId, ...data });
+  if (error) throw error;
+}
+
 export async function saveBuyerProfile(userId: string, profile: Record<string, unknown>) {
   const { error } = await supabase.from("buyer_profiles").upsert({ id: userId, ...profile });
   if (error) throw error;

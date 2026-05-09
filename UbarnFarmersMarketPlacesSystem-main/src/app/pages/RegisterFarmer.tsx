@@ -4,7 +4,7 @@ import { ChevronRight, ChevronLeft, CheckCircle, Upload, Camera } from "lucide-r
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { toast } from "sonner";
-import { signUp, saveFarmerProfile } from "../../lib/auth";
+import { signUp, saveFarmerProfile, saveFarmerVerification } from "../../lib/auth";
 
 export default function RegisterFarmer() {
   const navigate = useNavigate();
@@ -78,6 +78,8 @@ export default function RegisterFarmer() {
           farm_location: formData.farmLocation,
           farming_type: formData.farmingType,
           years_experience: parseInt(formData.yearsExperience) || 0,
+        });
+        await saveFarmerVerification(data.user.id, {
           national_id: formData.nationalId,
         });
       }

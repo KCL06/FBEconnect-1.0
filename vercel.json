@@ -1,0 +1,11 @@
+{
+  "installCommand": "cd UbarnFarmersMarketPlacesSystem-main && npm install",
+  "buildCommand": "cd UbarnFarmersMarketPlacesSystem-main && npm run build",
+  "outputDirectory": "UbarnFarmersMarketPlacesSystem-main/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

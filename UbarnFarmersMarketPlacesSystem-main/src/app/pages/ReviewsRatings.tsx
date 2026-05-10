@@ -1,4 +1,5 @@
 import { Star, ThumbsUp, MessageSquare } from "lucide-react";
+import { useState } from "react";
 
 const reviews = [
   {
@@ -62,10 +63,19 @@ const ratingDistribution = [
 ];
 
 export default function ReviewsRatings() {
+  const [filter, setFilter] = useState("All Reviews");
+
   const totalReviews = ratingDistribution.reduce((acc, r) => acc + r.count, 0);
   const averageRating = (
     ratingDistribution.reduce((acc, r) => acc + r.stars * r.count, 0) / totalReviews
   ).toFixed(1);
+
+  const filteredReviews = reviews.filter((review) => {
+    if (filter === "5 Stars") return review.rating === 5;
+    if (filter === "4 Stars") return review.rating === 4;
+    if (filter === "3 Stars & Below") return review.rating <= 3;
+    return true; // "All Reviews"
+  });
 
   return (
     <div className="p-8">
@@ -123,23 +133,51 @@ export default function ReviewsRatings() {
 
       {/* Filters */}
       <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-        <button className="px-4 py-2 rounded-lg font-medium bg-emerald-600 text-white whitespace-nowrap">
+        <button
+          onClick={() => setFilter("All Reviews")}
+          className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-all ${
+            filter === "All Reviews"
+              ? "bg-emerald-600 text-white"
+              : "bg-white/10 text-emerald-200 hover:bg-white/20"
+          }`}
+        >
           All Reviews
         </button>
-        <button className="px-4 py-2 rounded-lg font-medium bg-white/10 text-emerald-200 hover:bg-white/20 transition-all whitespace-nowrap">
+        <button
+          onClick={() => setFilter("5 Stars")}
+          className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-all ${
+            filter === "5 Stars"
+              ? "bg-emerald-600 text-white"
+              : "bg-white/10 text-emerald-200 hover:bg-white/20"
+          }`}
+        >
           5 Stars
         </button>
-        <button className="px-4 py-2 rounded-lg font-medium bg-white/10 text-emerald-200 hover:bg-white/20 transition-all whitespace-nowrap">
+        <button
+          onClick={() => setFilter("4 Stars")}
+          className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-all ${
+            filter === "4 Stars"
+              ? "bg-emerald-600 text-white"
+              : "bg-white/10 text-emerald-200 hover:bg-white/20"
+          }`}
+        >
           4 Stars
         </button>
-        <button className="px-4 py-2 rounded-lg font-medium bg-white/10 text-emerald-200 hover:bg-white/20 transition-all whitespace-nowrap">
+        <button
+          onClick={() => setFilter("3 Stars & Below")}
+          className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-all ${
+            filter === "3 Stars & Below"
+              ? "bg-emerald-600 text-white"
+              : "bg-white/10 text-emerald-200 hover:bg-white/20"
+          }`}
+        >
           3 Stars & Below
         </button>
       </div>
 
       {/* Reviews List */}
       <div className="space-y-4">
-        {reviews.map((review) => (
+        {filteredReviews.map((review) => (
           <div
             key={review.id}
             className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 hover:border-emerald-500/50 transition-all"

@@ -697,8 +697,8 @@ export default function Landing() {
                         <Phone className="w-6 h-6 text-emerald-400" />
                       </div>
                       <div>
-                        <h4 className="text-white font-bold">Phone Number</h4>
-                        <p className="text-emerald-200">+254 700 000 000</p>
+                        <h4 className="text-white font-bold">Phone Numbers</h4>
+                        <p className="text-emerald-200">+254 114 081 586 / +254 113 770 822</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">

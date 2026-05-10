@@ -109,9 +109,14 @@ export default function Footer() {
               </li>
               <li className="flex items-start gap-2 text-emerald-300 text-sm">
                 <Phone className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                <a href="tel:+254700000000" className="hover:text-white transition-colors">
-                  +254 700 000 000
-                </a>
+                <div className="flex flex-col gap-1">
+                  <a href="tel:+254114081586" className="hover:text-white transition-colors">
+                    +254 114 081 586
+                  </a>
+                  <a href="tel:+254113770822" className="hover:text-white transition-colors">
+                    +254 113 770 822
+                  </a>
+                </div>
               </li>
               <li className="flex items-start gap-2 text-emerald-300 text-sm">
                 <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />

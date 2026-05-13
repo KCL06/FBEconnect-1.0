@@ -20,7 +20,7 @@ export default function RegisterFarmer() {
     // Step 2
     farmName: "",
     farmLocation: "",
-    farmingType: "crop",
+    farmingTypes: [] as string[],
     yearsExperience: "",
     // Step 3
     idDocument: null as File | null,
@@ -45,8 +45,8 @@ export default function RegisterFarmer() {
       }
     }
     if (currentStep === 2) {
-      if (!formData.farmName || !formData.farmLocation || !formData.yearsExperience) {
-        toast.error("Please fill in all required fields");
+      if (!formData.farmName || !formData.farmLocation || !formData.yearsExperience || formData.farmingTypes.length === 0) {
+        toast.error("Please fill in all required fields and select at least one farming type");
         return;
       }
     }
@@ -76,7 +76,7 @@ export default function RegisterFarmer() {
         await saveFarmerProfile(data.user.id, {
           farm_name: formData.farmName,
           farm_location: formData.farmLocation,
-          farming_type: formData.farmingType,
+          farming_type: formData.farmingTypes.join(", "),
           years_experience: parseInt(formData.yearsExperience) || 0,
         });
         await saveFarmerVerification(data.user.id, {
@@ -165,12 +165,36 @@ export default function RegisterFarmer() {
                       <input type="text" value={formData.farmLocation} onChange={(e) => updateField("farmLocation", e.target.value)} placeholder="GPS coordinates or address" className="w-full bg-white/10 border border-white/20 text-white placeholder-emerald-300/50 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-all" required />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-emerald-100 mb-1">Type of Farming *</label>
-                      <select value={formData.farmingType} onChange={(e) => updateField("farmingType", e.target.value)} className="w-full bg-emerald-900/60 border border-white/20 text-white rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-all">
-                        <option value="crop">Crop Farming</option>
-                        <option value="livestock">Livestock Farming</option>
-                        <option value="mixed">Mixed Farming</option>
-                      </select>
+                      <label className="block text-sm font-medium text-emerald-100 mb-2">What do you farm? (select all that apply) *</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {["Vegetables", "Fruits", "Grains", "Dairy", "Poultry", "Tubers", "Herbs", "Flowers", "Livestock", "Fish", "Tea/Coffee", "Mixed Farming"].map((item) => (
+                          <label
+                            key={item}
+                            className={`flex items-center gap-2 cursor-pointer p-2.5 rounded-xl border transition-all ${
+                              formData.farmingTypes.includes(item)
+                                ? "bg-emerald-600/30 border-emerald-400 text-white"
+                                : "bg-white/5 border-white/10 text-emerald-200 hover:bg-white/10"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={formData.farmingTypes.includes(item)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setFormData(prev => ({ ...prev, farmingTypes: [...prev.farmingTypes, item] }));
+                                } else {
+                                  setFormData(prev => ({ ...prev, farmingTypes: prev.farmingTypes.filter(t => t !== item) }));
+                                }
+                              }}
+                              className="w-4 h-4 accent-emerald-500"
+                            />
+                            <span className="text-sm">{item}</span>
+                          </label>
+                        ))}
+                      </div>
+                      {formData.farmingTypes.length > 0 && (
+                        <p className="text-emerald-400 text-xs mt-2">Selected: {formData.farmingTypes.join(", ")}</p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-emerald-100 mb-1">Years of Experience *</label>

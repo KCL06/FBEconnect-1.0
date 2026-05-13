@@ -18,7 +18,7 @@ export default function RegisterBuyer() {
     confirmPassword: "",
     // Step 2
     location: "",
-    preferredProducts: "",
+    preferredProducts: [] as string[],
     buyingFrequency: "weekly",
     accountType: "individual",
     // Step 3
@@ -43,8 +43,8 @@ export default function RegisterBuyer() {
       }
     }
     if (currentStep === 2) {
-      if (!formData.location || !formData.preferredProducts) {
-        toast.error("Please fill in all required fields");
+      if (!formData.location || formData.preferredProducts.length === 0) {
+        toast.error("Please fill in all fields and select at least one product type");
         return;
       }
     }
@@ -73,7 +73,7 @@ export default function RegisterBuyer() {
       if (data.user) {
         await saveBuyerProfile(data.user.id, {
           location: formData.location,
-          preferred_products: formData.preferredProducts,
+          preferred_products: formData.preferredProducts.join(", "),
           buying_frequency: formData.buyingFrequency,
           account_type: formData.accountType,
         });
@@ -142,8 +142,36 @@ export default function RegisterBuyer() {
                     <input type="text" value={formData.location} onChange={(e) => updateField("location", e.target.value)} placeholder="Enter your delivery location" className="w-full bg-white/10 border border-white/20 text-white placeholder-emerald-300/50 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-all" required />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-emerald-100 mb-1">Preferred Products *</label>
-                    <input type="text" value={formData.preferredProducts} onChange={(e) => updateField("preferredProducts", e.target.value)} placeholder="e.g., Vegetables, Fruits, Dairy" className="w-full bg-white/10 border border-white/20 text-white placeholder-emerald-300/50 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-all" required />
+                    <label className="block text-sm font-medium text-emerald-100 mb-2">Products You Want to Buy (select all that apply) *</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {["Vegetables", "Fruits", "Grains", "Dairy", "Poultry", "Tubers", "Herbs", "Flowers", "Livestock", "Fish", "Tea/Coffee", "Organic Produce"].map((item) => (
+                        <label
+                          key={item}
+                          className={`flex items-center gap-2 cursor-pointer p-2.5 rounded-xl border transition-all ${
+                            formData.preferredProducts.includes(item)
+                              ? "bg-emerald-600/30 border-emerald-400 text-white"
+                              : "bg-white/5 border-white/10 text-emerald-200 hover:bg-white/10"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.preferredProducts.includes(item)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFormData(prev => ({ ...prev, preferredProducts: [...prev.preferredProducts, item] }));
+                              } else {
+                                setFormData(prev => ({ ...prev, preferredProducts: prev.preferredProducts.filter(t => t !== item) }));
+                              }
+                            }}
+                            className="w-4 h-4 accent-emerald-500"
+                          />
+                          <span className="text-sm">{item}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {formData.preferredProducts.length > 0 && (
+                      <p className="text-emerald-400 text-xs mt-2">Selected: {formData.preferredProducts.join(", ")}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-emerald-100 mb-1">Buying Frequency *</label>

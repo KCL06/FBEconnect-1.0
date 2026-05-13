@@ -179,4 +179,26 @@
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
   }
+
+  /* ── Fix dropdown option backgrounds globally ── */
+  select {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+  }
+
+  select option {
+    background-color: #064e3b; /* emerald-900 */
+    color: #ffffff;
+    padding: 0.5rem;
+  }
+
+  select option:checked {
+    background-color: #047857; /* emerald-700 */
+    color: #ffffff;
+  }
+
+  select option:hover {
+    background-color: #059669; /* emerald-600 */
+  }
 }

@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
-import { Home, Sprout, Package, TrendingUp, MessageSquare, ShoppingCart, Receipt, Bell, LayoutDashboard, Star, MapPin, MessageCircle, Settings, Menu, X, User, BookOpen, ChevronRight, ChevronLeft, Leaf, LogOut } from "lucide-react";
+import { Home, Sprout, Package, TrendingUp, MessageSquare, ShoppingCart, Receipt, Bell, LayoutDashboard, Star, MapPin, MessageCircle, Settings, Menu, X, User, BookOpen, ChevronRight, ChevronLeft, Leaf, LogOut, CalendarCheck } from "lucide-react";
 import svgPaths from "../../imports/svg-ld7y1c2a9i";
 import { supabase } from "../../lib/supabase";
 import { useState, useEffect } from "react";
@@ -13,10 +13,12 @@ const menuItems = [
   { path: "/app/farm-records", tKey: "farm_records", label: "My Farm Records", icon: Sprout, roles: ["farmer"] },
   { path: "/app/products", tKey: "products", label: "Products", icon: Package, roles: ["farmer"] },
   { path: "/app/market-prices", tKey: "price", label: "Market Prices", icon: TrendingUp, roles: ["farmer", "buyer"] },
-  { path: "/app/consultations", tKey: "consultations", label: "Consultations", icon: MessageSquare, roles: ["farmer", "expert"] },
+  // Farmers book consultations; experts manage them on their dedicated page
+  { path: "/app/consultations", tKey: "consultations", label: "Consultations", icon: MessageSquare, roles: ["farmer"] },
+  { path: "/app/expert-consultations", label: "My Consultations", icon: CalendarCheck, roles: ["expert"] },
   { path: "/app/messages", tKey: "messages", label: "Messages", icon: MessageCircle, roles: ["farmer", "buyer", "expert", "admin"] },
   { path: "/app/marketplace", tKey: "marketplace", label: "Market Place", icon: ShoppingCart, roles: ["farmer", "buyer"] },
-  { path: "/app/transaction", label: "Transaction", icon: Receipt, roles: ["farmer", "buyer", "expert", "admin"] },
+  { path: "/app/transaction", label: "Transaction", icon: Receipt, roles: ["farmer", "buyer", "admin"] },
   { path: "/app/notification", label: "Notifications", icon: Bell, roles: ["farmer", "buyer", "expert", "admin"] },
   { path: "/app/admin", label: "Admin Dashboard", icon: LayoutDashboard, roles: ["admin"] },
   { path: "/app/reviews", tKey: "reviews", label: "Reviews & Ratings", icon: Star, roles: ["farmer", "buyer", "expert", "admin"] },
@@ -223,7 +225,8 @@ export default function Layout() {
               {[
                 { path: "/app", tKey: "dashboard", label: "Dashboard", icon: Home, roles: ["farmer", "buyer", "expert", "admin"] },
                 { path: "/app/marketplace", tKey: "marketplace", label: "Market", icon: ShoppingCart, roles: ["farmer", "buyer"] },
-                { path: "/app/expert-knowledge", label: "Knowledge", icon: BookOpen, roles: ["farmer", "expert"] },
+                { path: "/app/expert-consultations", label: "My Consultations", icon: CalendarCheck, roles: ["expert"] },
+                { path: "/app/expert-knowledge", label: "Knowledge", icon: BookOpen, roles: ["farmer", "buyer", "expert", "admin"] },
                 { path: "/app/market-prices", tKey: "price", label: "Prices", icon: TrendingUp, roles: ["farmer", "buyer"] },
               ].filter(item => !profile?.role || item.roles.includes(profile.role)).map((item) => {
                 const Icon = item.icon;
@@ -287,31 +290,10 @@ export default function Layout() {
         {/* Page Content */}
         <div className="flex-1"><Outlet /></div>
 
-        {/* App Footer */}
-        <footer className="bg-emerald-950/80 backdrop-blur-sm border-t border-emerald-700/50 text-white py-8 mt-auto">
+        {/* App Footer — clean, no duplicate nav links */}
+        <footer className="bg-emerald-950/80 backdrop-blur-sm border-t border-emerald-700/50 text-white py-5 mt-auto">
           <div className="max-w-7xl mx-auto px-6">
-            <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 mb-5">
-              {[
-                { to: "/app", tKey: "dashboard", label: "Dashboard", roles: ["farmer", "buyer", "expert", "admin"] },
-                { to: "/app/farm-records", tKey: "farm_records", label: "Farm Records", roles: ["farmer"] },
-                { to: "/app/marketplace", tKey: "marketplace", label: "Marketplace", roles: ["farmer", "buyer"] },
-                { to: "/app/market-prices", tKey: "price", label: "Market Prices", roles: ["farmer", "buyer"] },
-                { to: "/app/expert-knowledge", label: "Expert Knowledge", roles: ["farmer", "expert"] },
-                { to: "/app/consultations", tKey: "consultations", label: "Consultations", roles: ["farmer", "expert"] },
-                { to: "/app/messages", tKey: "messages", label: "Messages", roles: ["farmer", "buyer", "expert", "admin"] },
-                { to: "/app/transaction", tKey: "orders", label: "Transactions", roles: ["farmer", "buyer", "expert", "admin"] },
-                { to: "/app/order-tracking", tKey: "orders", label: "Order Tracking", roles: ["farmer", "buyer"] },
-                { to: "/app/settings", tKey: "settings", label: "Settings", roles: ["farmer", "buyer", "expert", "admin"] },
-              ].filter(link => !profile?.role || link.roles.includes(profile.role as any)).map((link) => {
-                 const label = link.tKey ? t(link.tKey as any) : link.label;
-                 return (
-                  <Link key={link.to} to={link.to} className="text-emerald-300 hover:text-white text-sm transition-colors hover:underline">
-                    {label}
-                  </Link>
-                 )
-              })}
-            </div>
-            <div className="border-t border-emerald-800 pt-5 flex flex-col md:flex-row justify-between items-center gap-3">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-3">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 bg-gradient-to-br from-amber-500 to-emerald-500 rounded-full flex items-center justify-center">
                   <Leaf className="w-3.5 h-3.5 text-white" />

@@ -16,7 +16,7 @@ interface Product {
   farmer_id?: string;
 }
 
-const categories = ["All", "Vegetables", "Grains", "Dairy", "Poultry", "Tubers", "Fruits"];
+const defaultCategories = ["Vegetables", "Grains", "Dairy", "Poultry", "Tubers", "Fruits", "Herbs", "Flowers", "Livestock", "Fish"];
 
 export default function Products() {
   const { user } = useAuth();
@@ -61,24 +61,49 @@ export default function Products() {
     }
   };
 
+  // Build dynamic categories from defaults + whatever farmers have actually used
+  const productCategories = [...new Set([...defaultCategories, ...products.map(p => p.category).filter(Boolean)])];
+  const allCategories = ["All", ...productCategories.sort()];
+
   const filteredProducts = selectedCategory === "All"
     ? products
     : products.filter(p => p.category === selectedCategory);
 
+  const ensureBucketExists = async (bucketName: string) => {
+    try {
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const exists = buckets?.some(b => b.name === bucketName);
+      if (!exists) {
+        await supabase.storage.createBucket(bucketName, { public: true });
+      }
+    } catch {
+      // Bucket may already exist or we lack permissions — that's OK, the upload will tell us
+    }
+  };
+
   const uploadImage = async (file: File): Promise<string | null> => {
+    const bucketName = 'product-images';
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random()}.${fileExt}`;
       const filePath = `${user?.id}/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('product-images')
+      let { error: uploadError } = await supabase.storage
+        .from(bucketName)
         .upload(filePath, file);
+
+      // If the bucket doesn't exist yet, create it and retry once
+      if (uploadError && uploadError.message?.toLowerCase().includes('not found')) {
+        toast.info("Setting up image storage... please wait.");
+        await ensureBucketExists(bucketName);
+        const retry = await supabase.storage.from(bucketName).upload(filePath, file);
+        uploadError = retry.error;
+      }
 
       if (uploadError) throw uploadError;
 
       const { data } = supabase.storage
-        .from('product-images')
+        .from(bucketName)
         .getPublicUrl(filePath);
 
       return data.publicUrl;
@@ -232,7 +257,7 @@ export default function Products() {
         </button>
 
         <div className="flex gap-2 overflow-x-auto pb-2 whitespace-nowrap w-full md:w-auto">
-          {categories.map((category) => (
+          {allCategories.map((category) => (
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
@@ -434,15 +459,19 @@ export default function Products() {
 
               <div>
                 <label className="block text-emerald-200 text-sm mb-2">Category</label>
-                <select
+                <input
+                  type="text"
+                  list="edit-category-list"
                   value={editingProduct.category}
                   onChange={(e) => setEditingProduct({...editingProduct, category: e.target.value})}
-                  className="w-full bg-white/10 text-white px-4 py-2.5 rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-emerald-500 [&>option]:bg-emerald-900 [&>option]:text-white"
-                >
-                  {categories.filter(c => c !== "All").map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
+                  className="w-full bg-white/10 text-white px-4 py-2.5 rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  placeholder="Select or type a new category"
+                />
+                <datalist id="edit-category-list">
+                  {productCategories.map(cat => (
+                    <option key={cat} value={cat} />
                   ))}
-                </select>
+                </datalist>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -546,15 +575,20 @@ export default function Products() {
 
               <div>
                 <label className="block text-emerald-200 text-sm mb-2">Category</label>
-                <select
+                <input
+                  type="text"
+                  list="add-category-list"
                   value={newProduct.category}
                   onChange={(e) => setNewProduct({...newProduct, category: e.target.value})}
-                  className="w-full bg-white/10 text-white px-4 py-2.5 rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-emerald-500 [&>option]:bg-emerald-900 [&>option]:text-white"
-                >
-                  {categories.filter(c => c !== "All").map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
+                  className="w-full bg-white/10 text-white px-4 py-2.5 rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  placeholder="Select or type a new category"
+                  required
+                />
+                <datalist id="add-category-list">
+                  {productCategories.map(cat => (
+                    <option key={cat} value={cat} />
                   ))}
-                </select>
+                </datalist>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

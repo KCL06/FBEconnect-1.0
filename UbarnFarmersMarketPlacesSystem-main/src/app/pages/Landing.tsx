@@ -4,6 +4,7 @@ import { Sprout, TrendingUp, Users, ShoppingCart, CheckCircle, ArrowRight, Gradu
 import { toast } from "sonner";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import Logo from "../components/Logo";
 import { signIn } from "../../lib/auth";
 import { useLanguage } from "../context/LanguageContext";
 
@@ -187,8 +188,7 @@ export default function Landing() {
             {/* Left Side - Info */}
             <div className="text-white">
               <div className="flex items-center gap-2 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-br from-amber-600 to-cyan-600 rounded-full" />
-                <h1 className="text-4xl font-bold">FBEconnect</h1>
+                <Logo size="lg" />
               </div>
 
               <h2 className="text-5xl lg:text-6xl font-bold mb-6 leading-tight">

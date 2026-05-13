@@ -42,7 +42,7 @@ export async function getSession() {
   return data.session;
 }
 
-// ── Get profile from DB ──────────────────────────────
+// ── Get profile from DB ───────────────────────────  ───
 export async function getProfile(userId: string) {
   const { data, error } = await supabase
     .from("profiles")

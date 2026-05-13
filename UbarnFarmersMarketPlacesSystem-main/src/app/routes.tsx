@@ -17,6 +17,7 @@ import UserFeedback from "./pages/UserFeedback";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import ExpertKnowledge from "./pages/ExpertKnowledge";
+import ExpertConsultations from "./pages/ExpertConsultations";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import RegisterFarmer from "./pages/RegisterFarmer";
@@ -93,6 +94,7 @@ export const router = createBrowserRouter([
       { path: "settings", Component: Settings },
       { path: "profile", Component: Profile },
       { path: "expert-knowledge", Component: ExpertKnowledge },
+      { path: "expert-consultations", Component: ExpertConsultations },
       { path: "cart", Component: Cart },
       { path: "*", Component: NotFound },
     ],

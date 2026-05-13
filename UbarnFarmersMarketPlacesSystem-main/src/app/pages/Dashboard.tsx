@@ -1,286 +1,309 @@
-import { TrendingUp, Package, ShoppingBag, FileText, MessageSquare, ArrowRight, DollarSign, TrendingDown } from "lucide-react";
+import { useEffect, useState } from "react";
+import { TrendingUp, Package, ShoppingBag, FileText, MessageSquare, ArrowRight, DollarSign, TrendingDown, Loader2, InboxIcon } from "lucide-react";
 import { Link } from "react-router";
-import { PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, ComposedChart, Bar, BarChart, Line } from "recharts";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../../lib/supabase";
 
-const stats = [
-  { label: "Total Revenue", value: "KES 450K", change: "+12%", trend: "up", color: "from-emerald-600 to-emerald-700", icon: DollarSign },
-  { label: "Active Products", value: "3,050", change: "+8%", trend: "up", color: "from-blue-600 to-blue-700", icon: Package },
-  { label: "Pending Orders", value: "250", change: "-5%", trend: "down", color: "from-amber-600 to-amber-700", icon: ShoppingBag },
-  { label: "Farm Records", value: "450", change: "+15%", trend: "up", color: "from-purple-600 to-purple-700", icon: FileText },
-];
+interface DashboardStats {
+  totalRevenue: number;
+  activeProducts: number;
+  pendingOrders: number;
+  farmRecords: number;
+}
 
-// Sales data for line chart
-const salesData = [
-  { month: "Jan", revenue: 45000, orders: 120 },
-  { month: "Feb", revenue: 52000, orders: 145 },
-  { month: "Mar", revenue: 48000, orders: 130 },
-  { month: "Apr", revenue: 61000, orders: 168 },
-  { month: "May", revenue: 55000, orders: 152 },
-  { month: "Jun", revenue: 68000, orders: 185 },
-];
-
-// Product category data for bar chart
-const categoryData = [
-  { category: "Vegetables", sales: 45, target: 50 },
-  { category: "Grains", sales: 38, target: 40 },
-  { category: "Dairy", sales: 25, target: 20 },
-  { category: "Fruits", sales: 30, target: 35 },
-  { category: "Poultry", sales: 20, target: 25 },
-];
-
-// Product distribution for pie chart
-const productDistribution = [
-  { name: "Tomatoes", value: 400 },
-  { name: "Maize", value: 300 },
-  { name: "Milk", value: 200 },
-  { name: "Eggs", value: 150 },
-  { name: "Others", value: 250 },
-];
-
-const COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#8b5cf6", "#ec4899"];
+interface RecentMessage {
+  id: string;
+  content: string;
+  created_at: string;
+  sender_name: string;
+}
 
 const quickActions = [
-  { 
-    label: "Record farm activity", 
-    path: "/app/farm-records",
-    color: "from-amber-700 to-amber-800", 
-    icon: FileText 
-  },
-  { 
-    label: "Add new product", 
-    path: "/app/products",
-    color: "from-purple-700 to-purple-800", 
-    icon: Package 
-  },
-  { 
-    label: "View Market Prices", 
-    path: "/app/market-prices",
-    color: "from-blue-700 to-blue-800", 
-    icon: TrendingUp 
-  },
-];
-
-const recentMessages = [
-  { description: "New consultation request from buyer", date: "2 hours ago", color: "bg-slate-700", image: "https://images.unsplash.com/photo-1573164713988-8665fc963095?w=400&q=80" },
-  { description: "Price update for tomatoes", date: "5 hours ago", color: "bg-cyan-600", image: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&q=80" },
-  { description: "Order confirmed for 50kg maize", date: "1 day ago", color: "bg-emerald-600", image: "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?w=400&q=80" },
-  { description: "Review received on your product", date: "2 days ago", color: "bg-slate-500", image: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=400&q=80" },
+  { label: "Record farm activity", path: "/app/farm-records", color: "from-amber-700 to-amber-800", icon: FileText },
+  { label: "Add new product",      path: "/app/products",    color: "from-purple-700 to-purple-800", icon: Package },
+  { label: "View Market Prices",   path: "/app/market-prices", color: "from-blue-700 to-blue-800", icon: TrendingUp },
 ];
 
 export default function Dashboard() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
+  const [stats, setStats] = useState<DashboardStats>({ totalRevenue: 0, activeProducts: 0, pendingOrders: 0, farmRecords: 0 });
+  const [recentMessages, setRecentMessages] = useState<RecentMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchDashboardData();
+  }, [user]);
+
+  const fetchDashboardData = async () => {
+    if (!user) return;
+    setIsLoading(true);
+    try {
+      const role = profile?.role;
+
+      // ── Revenue: sum of orders placed by buyer OR fulfilled by farmer ──
+      let revenue = 0;
+      if (role === "buyer") {
+        const { data: orders } = await supabase
+          .from("orders")
+          .select("total_amount")
+          .eq("buyer_id", user.id);
+        revenue = orders?.reduce((sum, o) => sum + (o.total_amount || 0), 0) ?? 0;
+      } else if (role === "farmer") {
+        // Sum revenue from order_items for this farmer's products
+        const { data: items } = await supabase
+          .from("order_items")
+          .select("quantity, price_at_purchase, products!inner(farmer_id)")
+          .eq("products.farmer_id", user.id);
+        revenue = items?.reduce((sum, i) => sum + (i.quantity * i.price_at_purchase || 0), 0) ?? 0;
+      }
+
+      // ── Active Products (farmers only) ──
+      let activeProducts = 0;
+      if (role === "farmer") {
+        const { count } = await supabase
+          .from("products")
+          .select("*", { count: "exact", head: true })
+          .eq("farmer_id", user.id)
+          .eq("in_stock", true);
+        activeProducts = count ?? 0;
+      }
+
+      // ── Pending Orders ──
+      let pendingOrders = 0;
+      if (role === "buyer") {
+        const { count } = await supabase
+          .from("orders")
+          .select("*", { count: "exact", head: true })
+          .eq("buyer_id", user.id)
+          .eq("status", "pending");
+        pendingOrders = count ?? 0;
+      }
+
+      // ── Farm Records (farmers only) ──
+      let farmRecords = 0;
+      if (role === "farmer") {
+        const { count } = await supabase
+          .from("farm_records")
+          .select("*", { count: "exact", head: true })
+          .eq("farmer_id", user.id);
+        farmRecords = count ?? 0;
+      }
+
+      setStats({ totalRevenue: revenue, activeProducts, pendingOrders, farmRecords });
+
+      // ── Recent Messages ──
+      const { data: msgs } = await supabase
+        .from("messages")
+        .select("id, content, created_at, profiles!sender_id(full_name)")
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .order("created_at", { ascending: false })
+        .limit(4);
+
+      setRecentMessages(
+        (msgs ?? []).map((m: any) => ({
+          id: m.id,
+          content: m.content,
+          created_at: m.created_at,
+          sender_name: m.profiles?.full_name ?? "Unknown",
+        }))
+      );
+    } catch (err) {
+      console.error("Dashboard fetch error:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const role = profile?.role;
+
+  const statCards = [
+    {
+      label: role === "buyer" ? "Total Spent" : "Total Revenue",
+      value: stats.totalRevenue > 0 ? `KES ${stats.totalRevenue.toLocaleString()}` : "KES 0",
+      icon: DollarSign,
+      color: "from-emerald-600 to-emerald-700",
+      show: true,
+    },
+    {
+      label: "Active Products",
+      value: stats.activeProducts.toString(),
+      icon: Package,
+      color: "from-blue-600 to-blue-700",
+      show: role === "farmer",
+    },
+    {
+      label: "Pending Orders",
+      value: stats.pendingOrders.toString(),
+      icon: ShoppingBag,
+      color: "from-amber-600 to-amber-700",
+      show: role === "buyer" || role === "farmer",
+    },
+    {
+      label: "Farm Records",
+      value: stats.farmRecords.toString(),
+      icon: FileText,
+      color: "from-purple-600 to-purple-700",
+      show: role === "farmer",
+    },
+  ].filter((s) => s.show);
+
+  const formatTimeAgo = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+  };
+
   return (
     <div className="p-4 md:p-8">
       {/* Header */}
       <div className="mb-6 md:mb-8 relative rounded-2xl overflow-hidden p-6 md:p-8 bg-gradient-to-r from-emerald-800/80 to-emerald-700/80 backdrop-blur-sm">
-        <div 
+        <div
           className="absolute inset-0 opacity-20 bg-cover bg-center"
-          style={{
-            backgroundImage: "url('https://images.unsplash.com/photo-1706685137907-7cdbc2bb7e48?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxncmVlbiUyMGZhcm0lMjBmaWVsZCUyMGNyb3BzfGVufDF8fHx8MTc3MzI0ODczNnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral')"
-          }}
+          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1706685137907-7cdbc2bb7e48?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080')" }}
         />
         <div className="relative z-10">
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">DASHBOARD</h1>
-          <p className="text-emerald-200">Welcome back, {profile?.full_name || "Farmer"}!</p>
+          <p className="text-emerald-200">
+            Welcome back, {profile?.full_name || "User"}!{" "}
+            <span className="capitalize text-emerald-300 text-sm">({role})</span>
+          </p>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div
-              key={stat.label}
-              className={`bg-gradient-to-br ${stat.color} rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all hover:scale-105`}
-            >
-              <div className="flex items-start justify-between mb-4">
-                <Icon className="w-8 h-8 opacity-80" />
+      {isLoading ? (
+        <div className="flex justify-center items-center py-16 gap-3 text-emerald-300">
+          <Loader2 className="w-6 h-6 animate-spin" />
+          <span>Loading your dashboard...</span>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {statCards.map((stat) => {
+              const Icon = stat.icon;
+              const isEmpty = stat.value === "0" || stat.value === "KES 0";
+              return (
+                <div
+                  key={stat.label}
+                  className={`bg-gradient-to-br ${stat.color} rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all hover:scale-105`}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <Icon className="w-8 h-8 opacity-80" />
+                    {isEmpty && (
+                      <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">No data yet</span>
+                    )}
+                  </div>
+                  <div className="text-4xl font-bold mb-2">{stat.value}</div>
+                  <div className="text-white/80 text-sm">{stat.label}</div>
+                  {isEmpty && (
+                    <p className="text-white/50 text-xs mt-2">Will update as activity happens</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Quick Actions */}
+          {role === "farmer" && (
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-white">Quick Actions</h2>
               </div>
-              <div className="text-4xl font-bold mb-2">{stat.value}</div>
-              <div className="text-white/80 text-sm mb-2">{stat.label}</div>
-              <div className="flex items-center gap-1 text-sm">
-                {stat.trend === "up" ? (
-                  <TrendingUp className="w-4 h-4 text-emerald-300" />
-                ) : (
-                  <TrendingDown className="w-4 h-4 text-rose-300" />
-                )}
-                <span className={stat.trend === "up" ? "text-emerald-300" : "text-rose-300"}>
-                  {stat.change}
-                </span>
-                <span className="text-white/60 text-xs ml-1">vs last month</span>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {quickActions.map((action) => {
+                  const Icon = action.icon;
+                  return (
+                    <Link
+                      key={action.path}
+                      to={action.path}
+                      className={`bg-gradient-to-br ${action.color} rounded-xl p-6 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105 flex flex-col items-center justify-center text-center min-h-[160px] group`}
+                    >
+                      <Icon className="w-12 h-12 mb-4 group-hover:scale-110 transition-transform" />
+                      <span className="font-semibold text-lg">{action.label}</span>
+                    </Link>
+                  );
+                })}
               </div>
             </div>
-          );
-        })}
-      </div>
+          )}
 
-      {/* Quick Actions */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-white">Quick Actions</h2>
-          <button className="text-emerald-300 hover:text-white transition-colors">
-            <ArrowRight className="w-6 h-6" />
-          </button>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {quickActions.map((action) => {
-            const Icon = action.icon;
-            return (
-              <Link
-                key={action.path}
-                to={action.path}
-                className={`bg-gradient-to-br ${action.color} rounded-xl p-6 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105 flex flex-col items-center justify-center text-center min-h-[160px] group`}
-              >
-                <Icon className="w-12 h-12 mb-4 group-hover:scale-110 transition-transform" />
-                <span className="font-semibold text-lg">{action.label}</span>
+          {/* Recent Messages */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold text-white">Recent Messages</h2>
+              <Link to="/app/messages" className="text-emerald-300 hover:text-white transition-colors flex items-center gap-2">
+                <span className="text-sm">View all</span>
+                <ArrowRight className="w-5 h-5" />
               </Link>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Recent Messages */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-white">Recent messages</h2>
-          <Link to="/app/messages" className="text-emerald-300 hover:text-white transition-colors flex items-center gap-2">
-            <span className="text-sm">View all</span>
-            <ArrowRight className="w-5 h-5" />
-          </Link>
-        </div>
-        <div className="bg-rose-100/10 backdrop-blur-sm rounded-2xl p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {recentMessages.map((message) => (
-              <div
-                key={message.description}
-                className="bg-white/5 backdrop-blur-sm rounded-xl p-4 hover:bg-white/10 transition-all cursor-pointer"
-              >
-                <div 
-                  className={`${message.color} h-32 rounded-lg mb-3 flex items-center justify-center relative overflow-hidden bg-cover bg-center`}
-                  style={{ backgroundImage: `url(${message.image})` }}
-                >
-                  <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-all" />
-                  <MessageSquare className="w-10 h-10 text-white opacity-90 relative z-10 drop-shadow-md" />
-                </div>
-                <p className="text-white text-sm font-medium mb-1 break-words line-clamp-2">{message.description}</p>
-                <p className="text-emerald-300 text-xs">{message.date}</p>
+            </div>
+            {recentMessages.length === 0 ? (
+              <div className="bg-white/5 rounded-2xl border border-white/10 p-10 flex flex-col items-center text-center">
+                <InboxIcon className="w-12 h-12 text-emerald-600 mb-3" />
+                <p className="text-white font-semibold text-lg">No messages yet</p>
+                <p className="text-emerald-400 text-sm mt-1">Messages from buyers, farmers, and experts will appear here.</p>
+                <Link to="/app/messages" className="mt-4 bg-emerald-700 hover:bg-emerald-600 text-white px-5 py-2 rounded-xl text-sm font-medium transition-all">
+                  Start a conversation
+                </Link>
               </div>
-            ))}
+            ) : (
+              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {recentMessages.map((msg) => (
+                    <Link
+                      to="/app/messages"
+                      key={msg.id}
+                      className="bg-white/5 hover:bg-white/10 rounded-xl p-4 transition-all cursor-pointer block"
+                    >
+                      <div className="w-10 h-10 bg-emerald-700 rounded-full flex items-center justify-center mb-3">
+                        <MessageSquare className="w-5 h-5 text-white" />
+                      </div>
+                      <p className="text-white text-sm font-medium mb-1 line-clamp-2">{msg.content}</p>
+                      <p className="text-emerald-400 text-xs">From {msg.sender_name} · {formatTimeAgo(msg.created_at)}</p>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-        {/* Sales Chart */}
-        <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-          <h2 className="text-2xl font-bold text-white mb-4">Sales Overview</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart
-              data={salesData}
-              margin={{
-                top: 5,
-                right: 30,
-                left: 20,
-                bottom: 5,
-              }}
-            >
-              <defs>
-                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                </linearGradient>
-                <linearGradient id="colorOrders" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff20" />
-              <XAxis dataKey="month" stroke="#fff" />
-              <YAxis yAxisId="left" stroke="#fff" />
-              <YAxis yAxisId="right" orientation="right" stroke="#93c5fd" />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#1f2937', 
-                  border: '1px solid #374151',
-                  borderRadius: '8px',
-                  color: '#fff'
-                }} 
-              />
-              <Legend />
-              <Area yAxisId="left" type="monotone" dataKey="revenue" stroke="#10b981" fillOpacity={1} fill="url(#colorRevenue)" name="Revenue (KES)" />
-              <Area yAxisId="right" type="monotone" dataKey="orders" stroke="#3b82f6" fillOpacity={1} fill="url(#colorOrders)" name="Orders" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Product Category Chart */}
-        <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-          <h2 className="text-2xl font-bold text-white mb-4">Category Performance</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <ComposedChart
-              data={categoryData}
-              margin={{
-                top: 5,
-                right: 30,
-                left: 20,
-                bottom: 5,
-              }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff20" />
-              <XAxis dataKey="category" stroke="#fff" />
-              <YAxis stroke="#fff" />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#1f2937', 
-                  border: '1px solid #374151',
-                  borderRadius: '8px',
-                  color: '#fff'
-                }} 
-              />
-              <Legend />
-              <Bar dataKey="sales" fill="#10b981" name="Actual Sales (%)" radius={[4, 4, 0, 0]} />
-              <Line type="monotone" dataKey="target" stroke="#f59e0b" strokeWidth={3} name="Target (%)" />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Product Distribution Chart */}
-      <div className="mt-8 bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-        <h2 className="text-2xl font-bold text-white mb-4">Product Distribution</h2>
-        <ResponsiveContainer width="100%" height={300}>
-          <PieChart>
-            <Pie
-              data={productDistribution}
-              cx="50%"
-              cy="50%"
-              innerRadius={60}
-              outerRadius={100}
-              paddingAngle={5}
-              dataKey="value"
-              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-              labelLine={false}
-            >
-              {productDistribution.map((entry, index) => (
-                <Cell key={`pie-cell-${index}`} fill={COLORS[index % COLORS.length]} />
-              ))}
-            </Pie>
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: '#1f2937', 
-                border: '1px solid #374151',
-                borderRadius: '8px',
-                color: '#fff'
-              }} 
-              itemStyle={{ color: '#fff' }}
-            />
-            <Legend verticalAlign="bottom" height={36} />
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
+          {/* Getting Started card — shown when everything is zero */}
+          {stats.totalRevenue === 0 && stats.activeProducts === 0 && stats.pendingOrders === 0 && (
+            <div className="bg-gradient-to-br from-emerald-900/60 to-emerald-800/60 border border-emerald-700/40 rounded-2xl p-8 text-center">
+              <div className="text-5xl mb-4">🌱</div>
+              <h3 className="text-2xl font-bold text-white mb-2">Welcome to FBEconnect!</h3>
+              <p className="text-emerald-300 mb-6 max-w-md mx-auto">
+                Your dashboard will come to life as you {role === "farmer" ? "add products, receive orders, and record farm activities" : role === "buyer" ? "browse the marketplace and place orders" : "start receiving consultation requests"}.
+              </p>
+              <div className="flex flex-wrap gap-3 justify-center">
+                {role === "farmer" && (
+                  <>
+                    <Link to="/app/products" className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl font-semibold transition-all">
+                      + Add Your First Product
+                    </Link>
+                    <Link to="/app/farm-records" className="bg-white/10 hover:bg-white/20 text-white px-5 py-2.5 rounded-xl font-semibold transition-all">
+                      Record Farm Activity
+                    </Link>
+                  </>
+                )}
+                {role === "buyer" && (
+                  <Link to="/app/marketplace" className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl font-semibold transition-all">
+                    Browse Marketplace
+                  </Link>
+                )}
+                {role === "expert" && (
+                  <Link to="/app/expert-consultations" className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl font-semibold transition-all">
+                    View Consultation Requests
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

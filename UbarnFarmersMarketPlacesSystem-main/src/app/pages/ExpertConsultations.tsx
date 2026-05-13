@@ -24,74 +24,8 @@ interface ConsultationRequest {
   rating?: number;
 }
 
-const initialRequests: ConsultationRequest[] = [
-  {
-    id: 1,
-    farmer: "John Kamau",
-    farmerLocation: "Kiambu, Kenya",
-    farmerAvatar: "👨🏾‍🌾",
-    topic: "Tomato blight disease spreading across my greenhouse",
-    date: "May 20, 2026",
-    time: "10:00 AM",
-    duration: "45 min",
-    type: "Video Call",
-    status: "pending",
-    notes: "Noticed yellowing leaves with brown spots — worried about the whole crop.",
-  },
-  {
-    id: 2,
-    farmer: "Agnes Wanjiru",
-    farmerLocation: "Nakuru, Kenya",
-    farmerAvatar: "👩🏾‍🌾",
-    topic: "Soil pH correction before maize planting",
-    date: "May 22, 2026",
-    time: "2:00 PM",
-    duration: "30 min",
-    type: "Video Call",
-    status: "accepted",
-    notes: "Soil test shows pH 5.2 — need guidance on lime application rates.",
-  },
-  {
-    id: 3,
-    farmer: "Peter Otieno",
-    farmerLocation: "Kisumu, Kenya",
-    farmerAvatar: "👨🏿‍🌾",
-    topic: "Drip irrigation setup for half-acre plot",
-    date: "May 10, 2026",
-    time: "11:00 AM",
-    duration: "60 min",
-    type: "Phone Call",
-    status: "completed",
-    rating: 5,
-    notes: "Needs to water 200 tomato plants efficiently.",
-  },
-  {
-    id: 4,
-    farmer: "Mary Muthoni",
-    farmerLocation: "Meru, Kenya",
-    farmerAvatar: "👩🏾‍🌾",
-    topic: "Organic fertilizer alternatives for tea farm",
-    date: "May 8, 2026",
-    time: "3:00 PM",
-    duration: "45 min",
-    type: "Video Call",
-    status: "completed",
-    rating: 4,
-  },
-  {
-    id: 5,
-    farmer: "Samuel Kipchoge",
-    farmerLocation: "Eldoret, Kenya",
-    farmerAvatar: "👨🏾‍🌾",
-    topic: "Pest management for horticultural crops",
-    date: "May 25, 2026",
-    time: "9:00 AM",
-    duration: "30 min",
-    type: "Video Call",
-    status: "pending",
-    notes: "Aphid infestation on kales and cabbages — looking for organic solutions.",
-  },
-];
+// Start with empty data — consultations will be fetched from Supabase
+const initialRequests: ConsultationRequest[] = [];
 
 const STATUS_STYLES: Record<RequestStatus, { bg: string; text: string; label: string }> = {
   pending:     { bg: "bg-amber-900/40",   text: "text-amber-300",   label: "Pending" },

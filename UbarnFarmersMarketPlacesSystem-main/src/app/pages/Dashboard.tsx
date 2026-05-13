@@ -20,8 +20,8 @@ interface RecentMessage {
 
 const quickActions = [
   { label: "Record farm activity", path: "/app/farm-records", color: "from-amber-700 to-amber-800", icon: FileText },
-  { label: "Add new product",      path: "/app/products",    color: "from-purple-700 to-purple-800", icon: Package },
-  { label: "View Market Prices",   path: "/app/market-prices", color: "from-blue-700 to-blue-800", icon: TrendingUp },
+  { label: "Add new product", path: "/app/products", color: "from-purple-700 to-purple-800", icon: Package },
+  { label: "View Market Prices", path: "/app/market-prices", color: "from-blue-700 to-blue-800", icon: TrendingUp },
 ];
 
 export default function Dashboard() {

@@ -264,12 +264,7 @@ export default function Layout() {
             <button className="text-white p-1" onClick={() => setIsSidebarOpen(!isSidebarOpen)} aria-label="Toggle sidebar">
               {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-emerald-500 rounded-full flex items-center justify-center">
-                <Leaf className="w-4 h-4 text-white" />
-              </div>
-              <h1 className="text-xl font-bold text-white">FBEconnect</h1>
-            </div>
+            <Logo size="sm" />
             <div className="flex items-center gap-2">
               <Link to="/app/notification" className="relative text-white p-1">
                 <Bell className="w-5 h-5" />
@@ -294,12 +289,7 @@ export default function Layout() {
         <footer className="bg-emerald-950/80 backdrop-blur-sm border-t border-emerald-700/50 text-white py-5 mt-auto">
           <div className="max-w-7xl mx-auto px-6">
             <div className="flex flex-col md:flex-row justify-between items-center gap-3">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 bg-gradient-to-br from-amber-500 to-emerald-500 rounded-full flex items-center justify-center">
-                  <Leaf className="w-3.5 h-3.5 text-white" />
-                </div>
-                <span className="font-bold text-white">FBEconnect</span>
-              </div>
+              <Logo size="sm" />
               <p className="text-emerald-400 text-sm text-center">&copy; {new Date().getFullYear()} FBEconnect. Empowering agricultural communities.</p>
               <div className="flex gap-4">
                 <Link to="/privacy" className="text-emerald-400 hover:text-white text-xs transition-colors">Privacy</Link>

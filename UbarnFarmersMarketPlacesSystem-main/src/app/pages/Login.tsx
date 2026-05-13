@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
-import { Eye, EyeOff, Leaf, ArrowRight, Sprout, ShoppingBag, GraduationCap, Shield } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, Sprout, ShoppingBag, GraduationCap, Shield } from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import Logo from "../components/Logo";
 import { signIn } from "../../lib/auth";
 
 export default function Login() {
@@ -98,10 +99,7 @@ export default function Login() {
               {/* Left – Branding */}
               <div className="text-white hidden lg:block">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-14 h-14 bg-gradient-to-br from-amber-500 to-emerald-500 rounded-full flex items-center justify-center shadow-xl">
-                    <Leaf className="w-7 h-7 text-white" />
-                  </div>
-                  <h1 className="text-4xl font-bold">FBEconnect</h1>
+                  <Logo size="lg" />
                 </div>
                 <h2 className="text-3xl font-bold mb-4 leading-tight">
                   Welcome Back to Your Agricultural Hub
@@ -129,9 +127,7 @@ export default function Login() {
               <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20 shadow-2xl">
                 <div className="text-center mb-8">
                   <div className="flex justify-center mb-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-emerald-500 rounded-full flex items-center justify-center shadow-lg lg:hidden">
-                      <Leaf className="w-6 h-6 text-white" />
-                    </div>
+                    <Logo size="sm" className="lg:hidden" />
                   </div>
                   <h2 className="text-2xl font-bold text-white mb-1">Sign In</h2>
                   <p className="text-emerald-200 text-sm">Login to your FBEconnect account</p>

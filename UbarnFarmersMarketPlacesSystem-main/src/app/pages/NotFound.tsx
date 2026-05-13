@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router";
-import { Home, ArrowLeft, Leaf, Search } from "lucide-react";
+import { Home, ArrowLeft, Search } from "lucide-react";
+import Logo from "../components/Logo";
 
 export default function NotFound() {
   const navigate = useNavigate();
@@ -14,10 +15,7 @@ export default function NotFound() {
       <div className="relative z-10 text-center max-w-lg">
         {/* Logo */}
         <div className="flex items-center justify-center gap-3 mb-8">
-          <div className="w-14 h-14 bg-gradient-to-br from-amber-500 to-emerald-500 rounded-full flex items-center justify-center shadow-xl">
-            <Leaf className="w-7 h-7 text-white" />
-          </div>
-          <span className="text-3xl font-bold text-white">FBEconnect</span>
+          <Logo size="lg" />
         </div>
 
         {/* 404 Display */}

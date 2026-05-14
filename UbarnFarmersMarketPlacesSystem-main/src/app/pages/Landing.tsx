@@ -243,10 +243,7 @@ export default function Landing() {
               <div className="relative z-10">
                 <div className="flex gap-2 mb-6">
                   <button
-                    onClick={() => {
-                      setIsLogin(true);
-                      resetRole();
-                    }}
+                    onClick={() => { setIsLogin(true); resetRole(); }}
                     className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all ${isLogin
                         ? "bg-emerald-600 text-white shadow-lg"
                         : "bg-white/5 text-emerald-200 hover:bg-white/10"
@@ -255,82 +252,69 @@ export default function Landing() {
                     Login
                   </button>
                   <button
-                    onClick={() => {
-                      setIsLogin(false);
-                      resetRole();
-                    }}
-                    className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all ${!isLogin
-                        ? "bg-emerald-600 text-white shadow-lg"
-                        : "bg-white/5 text-emerald-200 hover:bg-white/10"
-                      }`}
+                    onClick={() => navigate("/register")}
+                    className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all bg-white/5 text-emerald-200 hover:bg-white/10`}
                   >
                     Sign Up
                   </button>
                 </div>
 
-                {/* Role Selection */}
+                {/* Role Selection — LOGIN: pick role then show form; SIGN UP: go straight to register page */}
                 {!selectedRole && (
                   <div className="space-y-4">
                     <h3 className="text-2xl font-bold text-white text-center mb-6">
-                      {isLogin ? "Login as a" : "Sign up as a"}
+                      {isLogin ? "Login as a" : "Create your account"}
                     </h3>
 
-                    <button
-                      onClick={() => setSelectedRole("farmer")}
-                      className="w-full bg-white/10 hover:bg-white/20 border-2 border-white/20 hover:border-emerald-400 rounded-xl p-6 transition-all group"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div
-                          className="w-12 h-12 rounded-full group-hover:scale-110 transition-transform bg-cover bg-center border-2 border-emerald-400"
-                          style={{
-                            backgroundImage: "url('https://images.unsplash.com/photo-1627829382469-f4bce7df99ba?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYXJtZXIlMjBwb3J0cmFpdCUyMHByb2Zlc3Npb25hbHxlbnwxfHx8fDE3NzYxOTUzNTF8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral')"
+                    {["farmer", "buyer", "expert"].map((role) => {
+                      const meta: Record<string, { label: string; desc: string; border: string; img: string }> = {
+                        farmer: {
+                          label: "Farmer",
+                          desc: "Manage your farm and sell products",
+                          border: "hover:border-emerald-400",
+                          img: "https://images.unsplash.com/photo-1627829382469-f4bce7df99ba?w=200&q=80",
+                        },
+                        buyer: {
+                          label: "Buyer",
+                          desc: "Purchase quality agricultural products",
+                          border: "hover:border-blue-400",
+                          img: "https://images.unsplash.com/photo-1753161618211-2b3d3166133a?w=200&q=80",
+                        },
+                        expert: {
+                          label: "Expert",
+                          desc: "Provide consultations and advice",
+                          border: "hover:border-purple-400",
+                          img: "https://images.unsplash.com/photo-1582794496242-8165eed32971?w=200&q=80",
+                        },
+                      };
+                      const m = meta[role];
+                      return (
+                        <button
+                          key={role}
+                          onClick={() => {
+                            if (isLogin) {
+                              setSelectedRole(role as any);
+                            } else {
+                              // Sign Up: go straight to the full registration page
+                              navigate(`/register/${role}`);
+                            }
                           }}
-                        />
-                        <div className="flex-1 text-left">
-                          <p className="text-white font-bold text-lg">Farmer</p>
-                          <p className="text-emerald-200 text-sm">Manage your farm and sell products</p>
-                        </div>
-                        <ArrowRight className="w-6 h-6 text-emerald-300 group-hover:translate-x-1 transition-transform" />
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => setSelectedRole("buyer")}
-                      className="w-full bg-white/10 hover:bg-white/20 border-2 border-white/20 hover:border-blue-400 rounded-xl p-6 transition-all group"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div
-                          className="w-12 h-12 rounded-full group-hover:scale-110 transition-transform bg-cover bg-center border-2 border-blue-400"
-                          style={{
-                            backgroundImage: "url('https://images.unsplash.com/photo-1753161618211-2b3d3166133a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxidXNpbmVzcyUyMHBlcnNvbiUyMGJ1eWVyfGVufDF8fHx8MTc3NjI1NTkwNHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral')"
-                          }}
-                        />
-                        <div className="flex-1 text-left">
-                          <p className="text-white font-bold text-lg">Buyer</p>
-                          <p className="text-emerald-200 text-sm">Purchase quality agricultural products</p>
-                        </div>
-                        <ArrowRight className="w-6 h-6 text-emerald-300 group-hover:translate-x-1 transition-transform" />
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => setSelectedRole("expert")}
-                      className="w-full bg-white/10 hover:bg-white/20 border-2 border-white/20 hover:border-purple-400 rounded-xl p-6 transition-all group"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div
-                          className="w-12 h-12 rounded-full group-hover:scale-110 transition-transform bg-cover bg-center border-2 border-purple-400"
-                          style={{
-                            backgroundImage: "url('https://images.unsplash.com/photo-1582794496242-8165eed32971?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZ3JpY3VsdHVyYWwlMjBleHBlcnQlMjBzY2llbnRpc3R8ZW58MXx8fHwxNzc2MjU1OTA0fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral')"
-                          }}
-                        />
-                        <div className="flex-1 text-left">
-                          <p className="text-white font-bold text-lg">Expert</p>
-                          <p className="text-emerald-200 text-sm">Provide consultations and advice</p>
-                        </div>
-                        <ArrowRight className="w-6 h-6 text-emerald-300 group-hover:translate-x-1 transition-transform" />
-                      </div>
-                    </button>
+                          className={`w-full bg-white/10 hover:bg-white/20 border-2 border-white/20 ${m.border} rounded-xl p-6 transition-all group`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div
+                              className="w-12 h-12 rounded-full group-hover:scale-110 transition-transform bg-cover bg-center border-2 border-emerald-400/50"
+                              style={{ backgroundImage: `url('${m.img}')` }}
+                            />
+                            <div className="flex-1 text-left">
+                              <p className="text-white font-bold text-lg">{m.label}</p>
+                              <p className="text-emerald-200 text-sm">{m.desc}</p>
+                            </div>
+                            <ArrowRight className="w-6 h-6 text-emerald-300 group-hover:translate-x-1 transition-transform" />
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
 

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
 import { LogIn, Clock } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 
@@ -9,13 +8,13 @@ import { supabase } from "../../lib/supabase";
  * Listens for Supabase TOKEN_REFRESHED failures and SIGNED_OUT events that
  * occur while the user is actively using the app.
  *
- * When a session expires mid-session (not on initial load, which is handled
- * by ProtectedRoute), this shows a modal prompting the user to log in again
- * rather than silently redirecting or breaking the UI.
+ * NOTE: This component lives OUTSIDE <RouterProvider> in App.tsx, so it
+ * cannot use React Router hooks. We use window.location.href instead,
+ * which is actually better for session expiry — a full reload clears
+ * any stale in-memory state.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 export default function SessionExpiredModal() {
-  const navigate = useNavigate();
   const [visible, setVisible] = useState(false);
   const [hasSession, setHasSession] = useState(true); // Assume session exists on mount
 
@@ -37,7 +36,7 @@ export default function SessionExpiredModal() {
 
   const handleLogin = () => {
     setVisible(false);
-    navigate("/login");
+    window.location.href = "/login";
   };
 
   if (!visible) return null;

@@ -3,6 +3,7 @@ import { TrendingUp, Package, ShoppingBag, FileText, MessageSquare, ArrowRight, 
 import { Link } from "react-router";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../../lib/supabase";
+import { useLanguage } from "../context/LanguageContext";
 
 interface DashboardStats {
   totalRevenue: number;
@@ -18,14 +19,15 @@ interface RecentMessage {
   sender_name: string;
 }
 
-const quickActions = [
-  { label: "Record farm activity", path: "/app/farm-records", color: "from-amber-700 to-amber-800", icon: FileText },
-  { label: "Add new product", path: "/app/products", color: "from-purple-700 to-purple-800", icon: Package },
-  { label: "View Market Prices", path: "/app/market-prices", color: "from-blue-700 to-blue-800", icon: TrendingUp },
+const quickActionKeys = [
+  { key: "record_farm_activity" as const, path: "/app/farm-records", color: "from-amber-700 to-amber-800", icon: FileText },
+  { key: "add_new_product" as const, path: "/app/products", color: "from-purple-700 to-purple-800", icon: Package },
+  { key: "view_market_prices" as const, path: "/app/market-prices", color: "from-blue-700 to-blue-800", icon: TrendingUp },
 ];
 
 export default function Dashboard() {
   const { profile, user } = useAuth();
+  const { t } = useLanguage();
   const [stats, setStats] = useState<DashboardStats>({ totalRevenue: 0, activeProducts: 0, pendingOrders: 0, farmRecords: 0 });
   const [recentMessages, setRecentMessages] = useState<RecentMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -119,28 +121,28 @@ export default function Dashboard() {
 
   const statCards = [
     {
-      label: role === "buyer" ? "Total Spent" : "Total Revenue",
+      label: role === "buyer" ? t("total_spent") : t("total_revenue"),
       value: stats.totalRevenue > 0 ? `KES ${stats.totalRevenue.toLocaleString()}` : "KES 0",
       icon: DollarSign,
       color: "from-emerald-600 to-emerald-700",
       show: true,
     },
     {
-      label: "Active Products",
+      label: t("active_products"),
       value: stats.activeProducts.toString(),
       icon: Package,
       color: "from-blue-600 to-blue-700",
       show: role === "farmer",
     },
     {
-      label: "Pending Orders",
+      label: t("pending_orders"),
       value: stats.pendingOrders.toString(),
       icon: ShoppingBag,
       color: "from-amber-600 to-amber-700",
       show: role === "buyer" || role === "farmer",
     },
     {
-      label: "Farm Records",
+      label: t("farm_records"),
       value: stats.farmRecords.toString(),
       icon: FileText,
       color: "from-purple-600 to-purple-700",
@@ -166,9 +168,9 @@ export default function Dashboard() {
           style={{ backgroundImage: "url('https://images.unsplash.com/photo-1706685137907-7cdbc2bb7e48?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080')" }}
         />
         <div className="relative z-10">
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">DASHBOARD</h1>
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">{t("dashboard").toUpperCase()}</h1>
           <p className="text-emerald-200">
-            Welcome back, {profile?.full_name || "User"}!{" "}
+            {t("welcome_back_user")} {profile?.full_name || "User"}!{" "}
             <span className="capitalize text-emerald-300 text-sm">({role})</span>
           </p>
         </div>
@@ -178,7 +180,7 @@ export default function Dashboard() {
       {isLoading ? (
         <div className="flex justify-center items-center py-16 gap-3 text-emerald-300">
           <Loader2 className="w-6 h-6 animate-spin" />
-          <span>Loading your dashboard...</span>
+          <span>{t("loading_dashboard")}</span>
         </div>
       ) : (
         <>
@@ -194,13 +196,13 @@ export default function Dashboard() {
                   <div className="flex items-start justify-between mb-4">
                     <Icon className="w-8 h-8 opacity-80" />
                     {isEmpty && (
-                      <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">No data yet</span>
+                      <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{t("no_data_yet")}</span>
                     )}
                   </div>
                   <div className="text-4xl font-bold mb-2">{stat.value}</div>
                   <div className="text-white/80 text-sm">{stat.label}</div>
                   {isEmpty && (
-                    <p className="text-white/50 text-xs mt-2">Will update as activity happens</p>
+                    <p className="text-white/50 text-xs mt-2">{t("will_update")}</p>
                   )}
                 </div>
               );
@@ -211,10 +213,10 @@ export default function Dashboard() {
           {role === "farmer" && (
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold text-white">Quick Actions</h2>
+                <h2 className="text-2xl font-bold text-white">{t("quick_actions")}</h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {quickActions.map((action) => {
+                {quickActionKeys.map((action) => {
                   const Icon = action.icon;
                   return (
                     <Link
@@ -223,7 +225,7 @@ export default function Dashboard() {
                       className={`bg-gradient-to-br ${action.color} rounded-xl p-6 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105 flex flex-col items-center justify-center text-center min-h-[160px] group`}
                     >
                       <Icon className="w-12 h-12 mb-4 group-hover:scale-110 transition-transform" />
-                      <span className="font-semibold text-lg">{action.label}</span>
+                      <span className="font-semibold text-lg">{t(action.key)}</span>
                     </Link>
                   );
                 })}
@@ -234,19 +236,19 @@ export default function Dashboard() {
           {/* Recent Messages */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold text-white">Recent Messages</h2>
+              <h2 className="text-2xl font-bold text-white">{t("recent_messages")}</h2>
               <Link to="/app/messages" className="text-emerald-300 hover:text-white transition-colors flex items-center gap-2">
-                <span className="text-sm">View all</span>
+                <span className="text-sm">{t("view_all")}</span>
                 <ArrowRight className="w-5 h-5" />
               </Link>
             </div>
             {recentMessages.length === 0 ? (
               <div className="bg-white/5 rounded-2xl border border-white/10 p-10 flex flex-col items-center text-center">
                 <InboxIcon className="w-12 h-12 text-emerald-600 mb-3" />
-                <p className="text-white font-semibold text-lg">No messages yet</p>
-                <p className="text-emerald-400 text-sm mt-1">Messages from buyers, farmers, and experts will appear here.</p>
+                <p className="text-white font-semibold text-lg">{t("no_messages_yet")}</p>
+                <p className="text-emerald-400 text-sm mt-1">{t("messages_will_appear")}</p>
                 <Link to="/app/messages" className="mt-4 bg-emerald-700 hover:bg-emerald-600 text-white px-5 py-2 rounded-xl text-sm font-medium transition-all">
-                  Start a conversation
+                  {t("start_conversation")}
                 </Link>
               </div>
             ) : (
@@ -274,7 +276,7 @@ export default function Dashboard() {
           {stats.totalRevenue === 0 && stats.activeProducts === 0 && stats.pendingOrders === 0 && (
             <div className="bg-gradient-to-br from-emerald-900/60 to-emerald-800/60 border border-emerald-700/40 rounded-2xl p-8 text-center">
               <div className="text-5xl mb-4">🌱</div>
-              <h3 className="text-2xl font-bold text-white mb-2">Welcome to FBEconnect!</h3>
+              <h3 className="text-2xl font-bold text-white mb-2">{t("welcome_fbeconnect")}</h3>
               <p className="text-emerald-300 mb-6 max-w-md mx-auto">
                 Your dashboard will come to life as you {role === "farmer" ? "add products, receive orders, and record farm activities" : role === "buyer" ? "browse the marketplace and place orders" : "start receiving consultation requests"}.
               </p>
@@ -282,21 +284,21 @@ export default function Dashboard() {
                 {role === "farmer" && (
                   <>
                     <Link to="/app/products" className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl font-semibold transition-all">
-                      + Add Your First Product
+                      {t("add_first_product")}
                     </Link>
                     <Link to="/app/farm-records" className="bg-white/10 hover:bg-white/20 text-white px-5 py-2.5 rounded-xl font-semibold transition-all">
-                      Record Farm Activity
+                      {t("record_farm_activity")}
                     </Link>
                   </>
                 )}
                 {role === "buyer" && (
                   <Link to="/app/marketplace" className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl font-semibold transition-all">
-                    Browse Marketplace
+                     {t("browse_marketplace")}
                   </Link>
                 )}
                 {role === "expert" && (
                   <Link to="/app/expert-consultations" className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl font-semibold transition-all">
-                    View Consultation Requests
+                     {t("view_consultation_requests")}
                   </Link>
                 )}
               </div>

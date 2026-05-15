@@ -1,4 +1,4 @@
-import { createBrowserRouter, Outlet } from "react-router";
+import { createBrowserRouter } from "react-router";
 import { lazy, Suspense } from "react";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleGuard from "./components/RoleGuard";
@@ -64,14 +64,7 @@ function PageSuspense({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Wraps an entire route subtree with Suspense. Used on the Layout outlet. */
-function SuspenseOutlet() {
-  return (
-    <PageSuspense>
-      <Outlet />
-    </PageSuspense>
-  );
-}
+
 
 // ── Router Definition ─────────────────────────────────────────────────────────
 export const router = createBrowserRouter([
@@ -131,22 +124,22 @@ export const router = createBrowserRouter([
         ),
         children: [
           // ── Available to all authenticated roles ────────────────────────
-          { index: true,                   element: <SuspenseOutlet />, Component: Dashboard },
-          { path: "market-prices",         element: <SuspenseOutlet />, Component: MarketPrices },
-          { path: "messages",              element: <SuspenseOutlet />, Component: Messages },
-          { path: "notification",          element: <SuspenseOutlet />, Component: Notification },
-          { path: "reviews",               element: <SuspenseOutlet />, Component: ReviewsRatings },
-          { path: "expert-knowledge",      element: <SuspenseOutlet />, Component: ExpertKnowledge },
-          { path: "settings",              element: <SuspenseOutlet />, Component: Settings },
-          { path: "profile",               element: <SuspenseOutlet />, Component: Profile },
+          { index: true,                   element: <PageSuspense><Dashboard /></PageSuspense> },
+          { path: "market-prices",         element: <PageSuspense><MarketPrices /></PageSuspense> },
+          { path: "messages",              element: <PageSuspense><Messages /></PageSuspense> },
+          { path: "notification",          element: <PageSuspense><Notification /></PageSuspense> },
+          { path: "reviews",               element: <PageSuspense><ReviewsRatings /></PageSuspense> },
+          { path: "expert-knowledge",      element: <PageSuspense><ExpertKnowledge /></PageSuspense> },
+          { path: "settings",              element: <PageSuspense><Settings /></PageSuspense> },
+          { path: "profile",               element: <PageSuspense><Profile /></PageSuspense> },
 
           // ── Farmer-only routes ──────────────────────────────────────────
           {
             element: <RoleGuard allowedRoles={["farmer"]} />,    // 🎭 Role gate
             children: [
-              { path: "farm-records",      Component: MyFarmRecords },
-              { path: "products",          Component: Products },
-              { path: "consultations",     Component: Consultations },
+              { path: "farm-records",      element: <PageSuspense><MyFarmRecords /></PageSuspense> },
+              { path: "products",          element: <PageSuspense><Products /></PageSuspense> },
+              { path: "consultations",     element: <PageSuspense><Consultations /></PageSuspense> },
             ],
           },
 
@@ -154,8 +147,8 @@ export const router = createBrowserRouter([
           {
             element: <RoleGuard allowedRoles={["farmer", "buyer"]} />,
             children: [
-              { path: "marketplace",       Component: MarketPlace },
-              { path: "order-tracking",    Component: OrderTracking },
+              { path: "marketplace",       element: <PageSuspense><MarketPlace /></PageSuspense> },
+              { path: "order-tracking",    element: <PageSuspense><OrderTracking /></PageSuspense> },
             ],
           },
 
@@ -163,7 +156,7 @@ export const router = createBrowserRouter([
           {
             element: <RoleGuard allowedRoles={["farmer", "buyer", "admin"]} />,
             children: [
-              { path: "transaction",       Component: Transaction },
+              { path: "transaction",       element: <PageSuspense><Transaction /></PageSuspense> },
             ],
           },
 
@@ -171,7 +164,7 @@ export const router = createBrowserRouter([
           {
             element: <RoleGuard allowedRoles={["buyer"]} />,
             children: [
-              { path: "cart",              Component: Cart },
+              { path: "cart",              element: <PageSuspense><Cart /></PageSuspense> },
             ],
           },
 
@@ -179,7 +172,7 @@ export const router = createBrowserRouter([
           {
             element: <RoleGuard allowedRoles={["expert"]} />,
             children: [
-              { path: "expert-consultations", Component: ExpertConsultations },
+              { path: "expert-consultations", element: <PageSuspense><ExpertConsultations /></PageSuspense> },
             ],
           },
 
@@ -187,8 +180,8 @@ export const router = createBrowserRouter([
           {
             element: <RoleGuard allowedRoles={["admin"]} />,     // 🔴 Admin gate
             children: [
-              { path: "admin",             Component: AdminDashboard },
-              { path: "user-feedback",     Component: UserFeedback },
+              { path: "admin",             element: <PageSuspense><AdminDashboard /></PageSuspense> },
+              { path: "user-feedback",     element: <PageSuspense><UserFeedback /></PageSuspense> },
             ],
           },
 

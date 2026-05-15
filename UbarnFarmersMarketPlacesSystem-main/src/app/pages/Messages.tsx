@@ -1,5 +1,6 @@
-import { Search, Send, Paperclip, Phone, Video } from "lucide-react";
+import { Search, Send, Paperclip, Phone, Video, ShieldAlert } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "sonner";
@@ -31,11 +32,25 @@ const filterContactInfo = (text: string) => {
 
 export default function Messages() {
   const { profile } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const contactParam = searchParams.get("contactId");
+  const messageParam = searchParams.get("message");
+  
   const [messages, setMessages] = useState<Message[]>([]);
   const [contacts, setContacts] = useState<Profile[]>([]);
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (messageParam) {
+      setNewMessage(messageParam);
+      // Clear it so it doesn't stay in URL forever
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete("message");
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [messageParam, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!profile) return;
@@ -90,8 +105,23 @@ export default function Messages() {
           }
         }
 
+        // If there's a specific contact passed in URL not found yet, fetch it
+        if (contactParam && !fetchedProfiles.some(p => p.id === contactParam)) {
+          const { data: specificProfile } = await supabase
+            .from("profiles")
+            .select("id, full_name, avatar_url, role")
+            .eq("id", contactParam)
+            .single();
+          if (specificProfile) {
+            fetchedProfiles.push(specificProfile);
+          }
+        }
+
         setContacts(fetchedProfiles);
-        if (fetchedProfiles.length > 0) {
+        
+        if (contactParam && fetchedProfiles.some(p => p.id === contactParam)) {
+          setSelectedContactId(contactParam);
+        } else if (fetchedProfiles.length > 0) {
           setSelectedContactId(fetchedProfiles[0].id);
         }
       }
@@ -167,6 +197,17 @@ export default function Messages() {
     (m.sender_id === selectedContactId && m.receiver_id === profile?.id)
   );
 
+  const handleAskAdmin = () => {
+    const admin = contacts.find(c => c.full_name === "Platform Admin (Support)");
+    if (admin && selectedContact) {
+      setSelectedContactId(admin.id);
+      setNewMessage(`Hi Admin, I need help regarding a negotiation with ${selectedContact.full_name}.`);
+    } else if (admin) {
+      setSelectedContactId(admin.id);
+      setNewMessage("Hi Admin, I need some assistance.");
+    }
+  };
+
   return (
     <div className="p-8">
       {/* Header */}
@@ -225,6 +266,16 @@ export default function Messages() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {selectedContact?.full_name !== "Platform Admin (Support)" && (
+                    <button 
+                      onClick={handleAskAdmin}
+                      title="Ask Admin for Help"
+                      className="p-2 bg-emerald-900/50 hover:bg-emerald-800 rounded-lg transition-colors border border-emerald-700/50 flex items-center gap-2 text-emerald-300 text-sm font-medium mr-2"
+                    >
+                      <ShieldAlert className="w-4 h-4" />
+                      <span className="hidden sm:inline">Ask Admin</span>
+                    </button>
+                  )}
                   <button className="p-2 hover:bg-white/10 rounded-lg transition-colors"><Phone className="w-5 h-5 text-emerald-300" /></button>
                   <button className="p-2 hover:bg-white/10 rounded-lg transition-colors"><Video className="w-5 h-5 text-emerald-300" /></button>
                 </div>

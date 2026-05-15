@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router";
 import {
   ShoppingCart, Trash2, Plus, Minus, ArrowLeft, PackageCheck,
   Tag, MapPin, Star, ShoppingBag, AlertCircle, CreditCard,
-  Smartphone, Building2, Truck, ChevronRight, Shield,
+  Smartphone, Building2, Truck, ChevronRight, Shield, MessageSquare,
 } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
@@ -24,6 +24,7 @@ export default function Cart() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("mpesa");
   const [mpesaPhone, setMpesaPhone] = useState("");
   const [bankRef, setBankRef] = useState("");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
   const [orderNotes, setOrderNotes] = useState("");
 
   const handleProceedToPayment = () => {
@@ -55,7 +56,7 @@ export default function Cart() {
           buyer_id: profile!.id,
           status: "pending",
           total_amount: totalPrice,
-          notes: orderNotes || `Payment: ${paymentMethod.toUpperCase()}`,
+          notes: `Delivery Address: ${deliveryAddress || 'Not provided'}\nNotes: ${orderNotes}\nPayment: ${paymentMethod.toUpperCase()}`,
         })
         .select()
         .single();
@@ -379,18 +380,31 @@ export default function Cart() {
                 </div>
               )}
 
-              {/* Order Notes */}
-              <div className="mt-6">
-                <label className="block text-emerald-100 text-sm font-medium mb-2">
-                  Delivery Notes (optional)
-                </label>
-                <textarea
-                  value={orderNotes}
-                  onChange={(e) => setOrderNotes(e.target.value)}
-                  placeholder="Special instructions, delivery address, etc."
-                  rows={3}
-                  className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
-                />
+              <div className="mt-6 space-y-4">
+                <div>
+                  <label className="block text-emerald-100 text-sm font-medium mb-2">
+                    Delivery Address
+                  </label>
+                  <input
+                    type="text"
+                    value={deliveryAddress}
+                    onChange={(e) => setDeliveryAddress(e.target.value)}
+                    placeholder="e.g. 123 Farm Road, Nairobi"
+                    className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-emerald-100 text-sm font-medium mb-2">
+                    Delivery Notes (optional)
+                  </label>
+                  <textarea
+                    value={orderNotes}
+                    onChange={(e) => setOrderNotes(e.target.value)}
+                    placeholder="Special instructions, e.g. Call upon arrival"
+                    rows={2}
+                    className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                  />
+                </div>
               </div>
             </div>
 
@@ -517,12 +531,22 @@ export default function Cart() {
                         </span>
                       )}
                     </div>
-                    <button
-                      onClick={() => removeFromCart(item.id)}
-                      className="flex items-center gap-1.5 text-red-400 hover:text-red-300 hover:bg-red-900/20 px-3 py-2 rounded-lg transition-all text-sm"
-                    >
-                      <Trash2 className="w-4 h-4" /> Remove
-                    </button>
+                    <div className="flex gap-2">
+                      {item.farmerId && profile?.id !== item.farmerId && (
+                        <Link
+                          to={`/app/messages?contactId=${item.farmerId}&message=Hi! Let's negotiate the delivery and price for ${item.name} (${item.quantity} ${item.unit}).`}
+                          className="flex items-center gap-1.5 text-emerald-300 hover:text-white hover:bg-emerald-900/40 px-3 py-2 rounded-lg transition-all text-sm border border-emerald-700/50"
+                        >
+                          <MessageSquare className="w-4 h-4" /> Negotiate
+                        </Link>
+                      )}
+                      <button
+                        onClick={() => removeFromCart(item.id)}
+                        className="flex items-center gap-1.5 text-red-400 hover:text-red-300 hover:bg-red-900/20 px-3 py-2 rounded-lg transition-all text-sm"
+                      >
+                        <Trash2 className="w-4 h-4" /> Remove
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

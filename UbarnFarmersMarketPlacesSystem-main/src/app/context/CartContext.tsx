@@ -8,6 +8,7 @@ export interface CartItem {
   priceLabel: string;   // e.g. "KES 120/kg"
   unit: string;         // "kg" | "liter" | "piece"
   seller: string;
+  farmerId?: string;    // ID for the farmer to enable messaging
   location: string;
   image: string;
   quantity: number;     // quantity in cart

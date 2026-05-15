@@ -1,4 +1,4 @@
-import { ShoppingCart, Heart, Search, Filter, Star, X } from "lucide-react";
+import { ShoppingCart, Heart, Search, Filter, Star, X, MessageSquare } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Link } from "react-router";
@@ -215,6 +215,7 @@ export default function MarketPlace() {
           const mapped = data.map(p => ({
             id: p.id,
             seller: p.profiles?.full_name || "Unknown Farmer",
+            farmer_id: p.farmer_id,
             product: p.name,
             price: p.price_label || `KES ${p.price}/unit`,
             numericPrice: p.price,
@@ -254,6 +255,7 @@ export default function MarketPlace() {
                 const mapped = newData.map(p => ({
                   id: p.id,
                   seller: p.profiles?.full_name || "Unknown Farmer",
+                  farmer_id: p.farmer_id,
                   product: p.name,
                   price: p.price_label || `KES ${p.price}/unit`,
                   numericPrice: p.price,
@@ -309,7 +311,7 @@ export default function MarketPlace() {
     }
   };
 
-  const handleAddToCart = (listing: typeof initialListings[0]) => {
+  const handleAddToCart = (listing: any) => {
     addToCart({
       id: listing.id,
       name: listing.product,
@@ -317,6 +319,7 @@ export default function MarketPlace() {
       priceLabel: listing.price,
       unit: listing.price.includes("kg") ? "kg" : listing.price.includes("liter") ? "liter" : listing.price.includes("piece") || listing.price.includes("bird") || listing.price.includes("bunch") || listing.price.includes("bag") || listing.price.includes("ml") ? "unit" : "unit",
       seller: listing.seller,
+      farmerId: listing.farmer_id,
       location: listing.location,
       image: listing.image,
       availableQty: 50,
@@ -493,22 +496,33 @@ export default function MarketPlace() {
                 <div>
                   <p className="text-2xl font-bold text-white">{listing.price}</p>
                 </div>
-                <button
-                  onClick={() => handleAddToCart(listing)}
-                  disabled={!listing.inStock}
-                  className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all ${
-                    !listing.inStock
-                      ? "bg-gray-700/60 text-gray-400 cursor-not-allowed"
-                      : isInCart(listing.id)
-                      ? "bg-emerald-700 text-white ring-2 ring-emerald-400"
-                      : "bg-emerald-600 hover:bg-emerald-500 text-white"
-                  }`}
-                >
-                  <ShoppingCart className="w-4 h-4" />
-                  <span className="text-sm font-semibold">
-                    {!listing.inStock ? "Out of Stock" : isInCart(listing.id) ? "✓ In Cart" : "Add to Cart"}
-                  </span>
-                </button>
+                <div className="flex gap-2">
+                  {listing.farmer_id && profile?.id !== listing.farmer_id && (
+                    <Link
+                      to={`/app/messages?contactId=${listing.farmer_id}&message=Hi! I am interested in your ${listing.product}.`}
+                      className="px-3 py-2 rounded-lg bg-emerald-900/50 hover:bg-emerald-800 text-emerald-300 transition-all border border-emerald-700/50 flex items-center justify-center"
+                      title="Message Seller"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                    </Link>
+                  )}
+                  <button
+                    onClick={() => handleAddToCart(listing)}
+                    disabled={!listing.inStock}
+                    className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all ${
+                      !listing.inStock
+                        ? "bg-gray-700/60 text-gray-400 cursor-not-allowed"
+                        : isInCart(listing.id)
+                        ? "bg-emerald-700 text-white ring-2 ring-emerald-400"
+                        : "bg-emerald-600 hover:bg-emerald-500 text-white"
+                    }`}
+                  >
+                    <ShoppingCart className="w-4 h-4" />
+                    <span className="text-sm font-semibold hidden lg:inline">
+                      {!listing.inStock ? "Out of Stock" : isInCart(listing.id) ? "In Cart" : "Add to Cart"}
+                    </span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>

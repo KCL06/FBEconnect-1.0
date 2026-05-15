@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { Mail, ArrowLeft, Leaf } from "lucide-react";
 import { supabase } from "../../lib/supabase";
@@ -8,6 +8,16 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSent, setIsSent] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+
+  // Handle countdown timer for resending email
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (countdown > 0) {
+      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [countdown]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,6 +35,7 @@ export default function ForgotPassword() {
       if (error) throw error;
       
       setIsSent(true);
+      setCountdown(60); // Start 60s countdown
       toast.success("Password reset link sent to your email.");
     } catch (err: any) {
       toast.error(err.message || "Failed to send reset link");
@@ -52,11 +63,20 @@ export default function ForgotPassword() {
           {isSent ? (
             <div className="text-center">
               <div className="mb-6 text-emerald-100">
-                We've sent a password reset link to <strong>{email}</strong>. Please check your email and click the link to continue.
+                We've sent a password reset link to <strong>{email}</strong>. Please check your spam folder if you don't see it.
               </div>
-              <Link to="/login" className="inline-block w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg hover:shadow-emerald-500/25">
-                Return to Login
-              </Link>
+              <div className="space-y-3">
+                <button 
+                  onClick={handleSubmit} 
+                  disabled={isSubmitting || countdown > 0}
+                  className="w-full bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white font-bold py-3 px-4 rounded-xl transition-all border border-white/20"
+                >
+                  {isSubmitting ? "Sending..." : countdown > 0 ? `Resend Email in ${countdown}s` : "Resend Email"}
+                </button>
+                <Link to="/login" className="inline-block w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg hover:shadow-emerald-500/25">
+                  Return to Login
+                </Link>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Package, Truck, CheckCircle, Clock, MapPin, Phone, X } from "lucide-react";
+import { Package, Truck, CheckCircle, Clock, MapPin, Phone, X, FileText, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../context/AuthContext";
@@ -38,6 +38,7 @@ export default function OrderTracking() {
   const [activeFilter, setActiveFilter] = useState<FilterTab>("All Orders");
   const [contactModal, setContactModal] = useState<any | null>(null);
   const [updateModal, setUpdateModal] = useState<any | null>(null);
+  const [receiptModal, setReceiptModal] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -73,11 +74,13 @@ export default function OrderTracking() {
             return {
               id: o.id,
               product: productNames || "Multiple Items",
+              items: o.items,
+              totalAmount: o.total_amount,
               quantity: `${totalQty} units`,
               buyer: o.buyer?.full_name || "Unknown Buyer",
               phone: o.buyer?.phone || "No phone provided",
               status: o.status,
-              orderDate: new Date(o.created_at).toLocaleDateString(),
+              orderDate: new Date(o.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }),
               deliveryDate: "Pending Update", 
               location: o.status === 'pending' ? "Awaiting Confirmation" : o.status === 'confirmed' ? "Farm - Preparing" : o.status === 'shipped' ? "In Transit" : o.status === 'delivered' ? "Delivered" : "Cancelled",
               progress: o.status === 'pending' ? 10 : o.status === 'confirmed' ? 40 : o.status === 'shipped' ? 70 : o.status === 'delivered' ? 100 : 0
@@ -230,6 +233,15 @@ export default function OrderTracking() {
                       <Phone className="w-4 h-4" />
                       Contact
                     </button>
+                    {(order.status === "confirmed" || order.status === "shipped" || order.status === "delivered") && (
+                      <button
+                        onClick={() => setReceiptModal(order)}
+                        className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-all border border-white/10"
+                      >
+                        <FileText className="w-4 h-4" />
+                        Receipt
+                      </button>
+                    )}
                     {profile?.role === 'farmer' && order.status !== "delivered" && (
                       <button
                         onClick={() => setUpdateModal(order)}
@@ -368,6 +380,70 @@ export default function OrderTracking() {
                   {updateModal.status === status && " (Current)"}
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Receipt Modal */}
+      {receiptModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-gray-200 rounded-2xl p-8 w-full max-w-lg shadow-2xl text-gray-800">
+            <div className="flex items-center justify-between mb-6 border-b pb-4">
+              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <FileText className="w-6 h-6 text-emerald-600" />
+                Order Receipt
+              </h2>
+              <button onClick={() => setReceiptModal(null)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-4 mb-6">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Order ID:</span>
+                <span className="font-mono font-medium">{receiptModal.id}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Date & Time:</span>
+                <span className="font-medium">{receiptModal.orderDate}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Status:</span>
+                <span className="font-medium uppercase text-emerald-600">{receiptModal.status}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Buyer:</span>
+                <span className="font-medium">{receiptModal.buyer}</span>
+              </div>
+            </div>
+
+            <div className="border-t border-gray-200 py-4">
+              <h3 className="font-bold text-gray-900 mb-3 text-sm">Items</h3>
+              <div className="space-y-2">
+                {receiptModal.items?.map((item: any, idx: number) => (
+                  <div key={idx} className="flex justify-between text-sm">
+                    <span>{item.product.name} x {item.quantity}</span>
+                    <span className="font-medium">KES {(item.price_at_purchase * item.quantity).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t border-gray-200 pt-4 flex justify-between items-center mb-8">
+              <span className="font-bold text-gray-900">Total Paid</span>
+              <span className="text-2xl font-bold text-emerald-600">KES {(receiptModal.totalAmount || 0).toLocaleString()}</span>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  toast.success("Printing receipt...");
+                  // In a real app, this would trigger window.print() on a dedicated printable page
+                }}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
+              >
+                <Printer className="w-5 h-5" /> Print Receipt
+              </button>
             </div>
           </div>
         </div>

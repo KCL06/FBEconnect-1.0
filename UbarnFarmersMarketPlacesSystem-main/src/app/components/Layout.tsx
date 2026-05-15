@@ -175,11 +175,11 @@ export default function Layout() {
                     to={item.path}
                     onClick={() => setIsSidebarOpen(false)}
                     title={isCollapsed ? label : undefined}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group ${isActive ? "bg-amber-700/90 text-white shadow-lg" : "text-emerald-200 hover:bg-emerald-700/40 hover:text-white"} ${isCollapsed ? 'justify-center' : ''}`}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group ${isActive ? "bg-emerald-600/90 text-white shadow-lg ring-1 ring-emerald-400/50" : "text-emerald-200 hover:bg-emerald-700/40 hover:text-white"} ${isCollapsed ? 'justify-center' : ''}`}
                   >
-                    <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-amber-200" : "text-emerald-400 group-hover:text-white"}`} />
+                    <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-white" : "text-emerald-400 group-hover:text-white"}`} />
                     {!isCollapsed && <span className="text-sm font-medium truncate">{label}</span>}
-                    {!isCollapsed && isActive && <ChevronRight className="w-3 h-3 ml-auto text-amber-200" />}
+                    {!isCollapsed && isActive && <ChevronRight className="w-3 h-3 ml-auto text-emerald-200" />}
                   </Link>
                 </li>
               );
@@ -193,7 +193,7 @@ export default function Layout() {
             to="/app/settings"
             onClick={() => setIsSidebarOpen(false)}
             title={isCollapsed ? t('settings') : undefined}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${location.pathname === "/app/settings" ? "bg-amber-700/90 text-white shadow-lg" : "text-emerald-200 hover:bg-emerald-700/40 hover:text-white"} ${isCollapsed ? 'justify-center' : ''}`}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${location.pathname === "/app/settings" ? "bg-emerald-600/90 text-white shadow-lg ring-1 ring-emerald-400/50" : "text-emerald-200 hover:bg-emerald-700/40 hover:text-white"} ${isCollapsed ? 'justify-center' : ''}`}
           >
             <Settings className="w-4 h-4 flex-shrink-0" />
             {!isCollapsed && <span className="text-sm font-medium">{t('settings')}</span>}

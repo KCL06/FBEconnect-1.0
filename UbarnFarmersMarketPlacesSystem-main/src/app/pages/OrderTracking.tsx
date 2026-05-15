@@ -47,7 +47,8 @@ export default function OrderTracking() {
     const fetchOrders = async () => {
       setIsLoading(true);
       try {
-        let query = supabase.from('orders').select(`
+        let fetchedOrders: any[] = [];
+        const queryStr = `
           id, status, created_at, total_amount,
           buyer:profiles!buyer_id(full_name, phone),
           items:order_items!inner(
@@ -55,19 +56,47 @@ export default function OrderTracking() {
             price_at_purchase,
             product:products!inner(name, farmer_id)
           )
-        `).order('created_at', { ascending: false });
+        `;
 
-        if (profile.role === 'buyer') {
-          query = query.eq('buyer_id', profile.id);
-        } else if (profile.role === 'farmer') {
-          query = query.eq('items.product.farmer_id', profile.id);
+        if (profile.role === 'admin') {
+          const { data, error } = await supabase.from('orders').select(queryStr).order('created_at', { ascending: false });
+          if (error) throw error;
+          fetchedOrders = data || [];
+        } else {
+          // Fetch orders where the user is the buyer
+          const { data: buyerData, error: buyerError } = await supabase
+            .from('orders')
+            .select(queryStr)
+            .eq('buyer_id', profile.id)
+            .order('created_at', { ascending: false });
+            
+          if (buyerError) throw buyerError;
+          fetchedOrders = buyerData || [];
+
+          // If the user is a farmer, ALSO fetch orders where they are the seller
+          if (profile.role === 'farmer') {
+            const { data: sellerData, error: sellerError } = await supabase
+              .from('orders')
+              .select(queryStr)
+              .eq('items.product.farmer_id', profile.id)
+              .order('created_at', { ascending: false });
+              
+            if (sellerError) throw sellerError;
+            
+            if (sellerData) {
+               const existingIds = new Set(fetchedOrders.map(o => o.id));
+               for (const order of sellerData) {
+                 if (!existingIds.has(order.id)) {
+                   fetchedOrders.push(order);
+                 }
+               }
+               fetchedOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            }
+          }
         }
-
-        const { data, error } = await query;
-        if (error) throw error;
         
-        if (data) {
-          const formatted = data.map((o: any) => {
+        if (fetchedOrders.length >= 0) {
+          const formatted = fetchedOrders.map((o: any) => {
             const productNames = o.items.map((i: any) => i.product.name).join(", ");
             const totalQty = o.items.reduce((sum: number, i: any) => sum + i.quantity, 0);
             
@@ -242,7 +271,7 @@ export default function OrderTracking() {
                         Receipt
                       </button>
                     )}
-                    {profile?.role === 'farmer' && order.status !== "delivered" && (
+                    {profile?.role === 'farmer' && order.items?.some((i: any) => i.product.farmer_id === profile.id) && order.status !== "delivered" && (
                       <button
                         onClick={() => setUpdateModal(order)}
                         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-all"

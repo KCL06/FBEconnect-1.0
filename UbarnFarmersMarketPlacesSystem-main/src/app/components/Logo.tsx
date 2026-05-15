@@ -34,7 +34,7 @@ export default function Logo({ size = "md", showText = false, className = "" }: 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       <img
-        src="/logo.png"
+        src="/Logo.png"
         alt="FBEconnect Logo"
         className={`${sizeMap[size]} w-auto object-contain`}
         onError={(e) => {

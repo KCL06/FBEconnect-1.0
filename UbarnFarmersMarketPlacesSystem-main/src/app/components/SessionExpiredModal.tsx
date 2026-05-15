@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { LogIn, Clock } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 
@@ -16,23 +16,47 @@ import { supabase } from "../../lib/supabase";
  */
 export default function SessionExpiredModal() {
   const [visible, setVisible] = useState(false);
-  const [hasSession, setHasSession] = useState(true); // Assume session exists on mount
+  const isExplicitSignOut = useRef(false);
 
   useEffect(() => {
-    // Track session state to detect mid-session expiry (not initial load)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT" && hasSession) {
-        // Only show modal if user had a session (i.e., was actively logged in)
-        setVisible(true);
-      }
-      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-        setHasSession(true);
+    // We only want to show the modal if the token refresh failed.
+    // Supabase emits 'SIGNED_OUT' when a token fails to refresh OR when signOut() is called.
+    
+    // Intercept explicit sign out to prevent the modal from showing
+    const originalSignOut = supabase.auth.signOut.bind(supabase.auth);
+    supabase.auth.signOut = async (options) => {
+      isExplicitSignOut.current = true;
+      return originalSignOut(options);
+    };
+
+    let hadSession = false;
+
+    // Check initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      hadSession = !!session;
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "INITIAL_SESSION") {
+        hadSession = !!session;
+      } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        hadSession = true;
         setVisible(false);
+        isExplicitSignOut.current = false;
+      } else if (event === "SIGNED_OUT") {
+        // Show modal ONLY if we previously had a session AND it wasn't an explicit sign out
+        if (hadSession && !isExplicitSignOut.current) {
+          setVisible(true);
+        }
+        hadSession = false;
       }
     });
 
-    return () => subscription.unsubscribe();
-  }, [hasSession]);
+    return () => {
+      subscription.unsubscribe();
+      supabase.auth.signOut = originalSignOut;
+    };
+  }, []);
 
   const handleLogin = () => {
     setVisible(false);

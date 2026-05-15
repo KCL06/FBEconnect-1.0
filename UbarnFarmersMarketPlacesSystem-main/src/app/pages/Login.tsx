@@ -1,62 +1,114 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router";
 import { toast } from "sonner";
-import { Eye, EyeOff, ArrowRight, Sprout, ShoppingBag, GraduationCap, Shield } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, Sprout, ShoppingBag, GraduationCap, Shield, Lock, Clock } from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import Logo from "../components/Logo";
-import { signIn } from "../../lib/auth";
+import { useAuth } from "../context/AuthContext";
+import { useRateLimit } from "../../hooks/useRateLimit";
+import { validateEmail } from "../../utils/validation";
+import { supabase } from "../../lib/supabase";
+import { getErrorMessage } from "../../lib/api";
 
 export default function Login() {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({ email: "", password: "" });
+  const location = useLocation();
+  const { session, loading } = useAuth();
+
+  const [formData, setFormData]   = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
-  // MFA states
-  const [showMfa, setShowMfa] = useState(false);
-  const [mfaCode, setMfaCode] = useState("");
+  const [showMfa, setShowMfa]     = useState(false);
+  const [mfaCode, setMfaCode]     = useState("");
   const [mfaFactorId, setMfaFactorId] = useState("");
 
+  // ── Rate limiting (max 5 failed attempts within 5 min → 30 s lock) ──────
+  const { isThrottled, remainingSeconds, attemptsLeft, recordAttempt, reset } =
+    useRateLimit({ storageKey: "login_attempts" });
+
+  // ── Redirect already-authenticated users away from login ─────────────────
+  useEffect(() => {
+    if (!loading && session) {
+      // Return them to the page they originally tried to visit, or /app
+      const from = (location.state as any)?.from?.pathname ?? "/app";
+      navigate(from, { replace: true });
+    }
+  }, [session, loading, navigate, location]);
+
+  // ── Form submission ───────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Client-side throttle
+    if (isThrottled) {
+      toast.error(`Too many attempts. Please wait ${remainingSeconds}s.`);
+      return;
+    }
+
+    // Basic validation
     if (!formData.email || !formData.password) {
       toast.error("Please fill in all fields");
       return;
     }
+    if (!validateEmail(formData.email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const { supabase } = await import("../../lib/supabase");
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
+        email: formData.email.trim().toLowerCase(),
         password: formData.password,
       });
 
-      if (error) throw error;
+      if (error) {
+        // Record failure for rate limiting
+        recordAttempt();
+        throw error;
+      }
 
-      // Check if MFA is required
-      if (data.session && data.user && data.user.factors && data.user.factors.length > 0) {
-        const factor = data.user.factors.find((f: any) => f.factor_type === 'totp' && f.status === 'verified');
+      // ── MFA check ──────────────────────────────────────────────────────
+      if (data.user?.factors && data.user.factors.length > 0) {
+        const factor = data.user.factors.find(
+          (f: any) => f.factor_type === "totp" && f.status === "verified"
+        );
         if (factor) {
-           setMfaFactorId(factor.id);
-           setShowMfa(true);
-           setIsLoading(false);
-           return;
+          setMfaFactorId(factor.id);
+          setShowMfa(true);
+          setIsLoading(false);
+          return;
         }
       }
 
+      // ── Success ────────────────────────────────────────────────────────
+      reset(); // Clear rate limit on success
       toast.success("Welcome back to FBEconnect!");
-      navigate("/app");
+      // Navigate to the originally-requested page or dashboard
+      const from = (location.state as any)?.from?.pathname ?? "/app";
+      navigate(from, { replace: true });
     } catch (err: any) {
-      const msg = err.message || "Login failed";
-      if (msg.includes("Invalid login")) toast.error("Wrong email or password.");
-      else if (msg.includes("Email not confirmed")) toast.error("Please verify your email first.");
-      else toast.error(msg);
+      const msg = err?.message ?? "";
+      if (msg.includes("Invalid login") || msg.includes("invalid_credentials")) {
+        const left = attemptsLeft - 1;
+        toast.error(
+          left > 0
+            ? `Wrong email or password. ${left} attempt${left !== 1 ? "s" : ""} remaining.`
+            : "Wrong email or password. You will be locked out on the next failed attempt."
+        );
+      } else if (msg.includes("Email not confirmed")) {
+        toast.error("Please verify your email address first. Check your inbox.");
+      } else {
+        // ⚠️ Use classified error — never expose raw Supabase messages in production
+        toast.error(getErrorMessage(err));
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
+  // ── MFA verification ──────────────────────────────────────────────────────
   const handleVerifyMfa = async (e: React.FormEvent) => {
     e.preventDefault();
     if (mfaCode.length !== 6) {
@@ -65,21 +117,24 @@ export default function Login() {
     }
     setIsLoading(true);
     try {
-      const { supabase } = await import("../../lib/supabase");
-      const { data, error } = await supabase.auth.mfa.challengeAndVerify({
+      const { error } = await supabase.auth.mfa.challengeAndVerify({
         factorId: mfaFactorId,
         code: mfaCode,
       });
       if (error) throw error;
-      
+      reset();
       toast.success("Welcome back to FBEconnect!");
-      navigate("/app");
+      const from = (location.state as any)?.from?.pathname ?? "/app";
+      navigate(from, { replace: true });
     } catch (err: any) {
-      toast.error("Invalid code: " + err.message);
+      toast.error("Invalid authentication code. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Show a minimal loading state while checking existing session
+  if (loading) return null;
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-700 relative overflow-hidden">
@@ -87,12 +142,13 @@ export default function Login() {
       <div
         className="absolute inset-0 opacity-10 bg-cover bg-center"
         style={{ backgroundImage: "url('https://images.unsplash.com/photo-1724531281596-cfae90d5a082?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080')" }}
+        aria-hidden="true"
       />
 
       <div className="relative z-10 flex flex-col min-h-screen">
         <Header />
 
-        <main className="flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <main className="flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8" id="main-content">
           <div className="w-full max-w-5xl">
             <div className="grid lg:grid-cols-2 gap-10 items-center">
 
@@ -101,9 +157,9 @@ export default function Login() {
                 <div className="flex items-center gap-3 mb-6">
                   <Logo size="lg" />
                 </div>
-                <h2 className="text-3xl font-bold mb-4 leading-tight">
+                <h1 className="text-3xl font-bold mb-4 leading-tight">
                   Welcome Back to Your Agricultural Hub
-                </h2>
+                </h1>
                 <p className="text-emerald-200 text-lg mb-8 leading-relaxed">
                   Access your farm records, connect with buyers, track market prices, and consult with experts — all in one place.
                 </p>
@@ -114,7 +170,7 @@ export default function Login() {
                     { icon: GraduationCap, label: "Access expert knowledge library" },
                   ].map(({ icon: Icon, label }) => (
                     <div key={label} className="flex items-center gap-3">
-                      <div className="w-9 h-9 bg-emerald-700/60 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <div className="w-9 h-9 bg-emerald-700/60 rounded-lg flex items-center justify-center flex-shrink-0" aria-hidden="true">
                         <Icon className="w-4 h-4 text-emerald-300" />
                       </div>
                       <span className="text-emerald-100">{label}</span>
@@ -133,28 +189,46 @@ export default function Login() {
                   <p className="text-emerald-200 text-sm">Login to your FBEconnect account</p>
                 </div>
 
+                {/* ── Rate-limit lockout banner ── */}
+                {isThrottled && (
+                  <div className="mb-5 flex items-center gap-3 bg-red-900/40 border border-red-700/50 rounded-xl px-4 py-3" role="alert">
+                    <Clock className="w-5 h-5 text-red-400 flex-shrink-0" aria-hidden="true" />
+                    <p className="text-red-200 text-sm font-medium">
+                      Too many failed attempts. Please wait{" "}
+                      <span className="font-bold text-red-100">{remainingSeconds}s</span> before trying again.
+                    </p>
+                  </div>
+                )}
+
                 {showMfa ? (
-                  <form onSubmit={handleVerifyMfa} className="space-y-5">
+                  /* ── MFA Form ── */
+                  <form onSubmit={handleVerifyMfa} className="space-y-5" noValidate>
                     <div>
-                      <label className="block text-sm font-medium text-emerald-100 mb-2">Two-Factor Authentication Code</label>
+                      <label htmlFor="mfa-code" className="block text-sm font-medium text-emerald-100 mb-2">
+                        Two-Factor Authentication Code
+                      </label>
                       <input
+                        id="mfa-code"
                         type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
                         maxLength={6}
                         value={mfaCode}
                         onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
                         placeholder="000000"
                         className="w-full bg-white/10 border border-white/20 text-white placeholder-emerald-300/60 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all tracking-widest text-center font-mono text-xl"
                         required
+                        aria-label="6-digit authentication code"
                       />
                       <p className="text-emerald-300 text-xs mt-2 text-center">Open your authenticator app to get the code.</p>
                     </div>
                     <button
                       type="submit"
-                      disabled={isLoading}
-                      className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-emerald-500/25"
+                      disabled={isLoading || mfaCode.length < 6}
+                      className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-emerald-500/25"
                     >
                       {isLoading ? "Verifying..." : "Verify & Login"}
-                      {!isLoading && <ArrowRight className="w-5 h-5" />}
+                      {!isLoading && <ArrowRight className="w-5 h-5" aria-hidden="true" />}
                     </button>
                     <button
                       type="button"
@@ -165,34 +239,47 @@ export default function Login() {
                     </button>
                   </form>
                 ) : (
-                  <form onSubmit={handleSubmit} className="space-y-5">
+                  /* ── Login Form ── */
+                  <form onSubmit={handleSubmit} className="space-y-5" noValidate>
                     <div>
-                      <label className="block text-sm font-medium text-emerald-100 mb-2">Email Address</label>
+                      <label htmlFor="email" className="block text-sm font-medium text-emerald-100 mb-2">
+                        Email Address
+                      </label>
                       <input
+                        id="email"
                         type="email"
+                        autoComplete="email"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         placeholder="Enter your email"
                         className="w-full bg-white/10 border border-white/20 text-white placeholder-emerald-300/60 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all"
                         required
+                        disabled={isThrottled}
+                        aria-describedby={isThrottled ? "rate-limit-msg" : undefined}
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-emerald-100 mb-2">Password</label>
+                      <label htmlFor="password" className="block text-sm font-medium text-emerald-100 mb-2">
+                        Password
+                      </label>
                       <div className="relative">
                         <input
+                          id="password"
                           type={showPassword ? "text" : "password"}
+                          autoComplete="current-password"
                           value={formData.password}
                           onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                           placeholder="Enter your password"
                           className="w-full bg-white/10 border border-white/20 text-white placeholder-emerald-300/60 rounded-xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all"
                           required
+                          disabled={isThrottled}
                         />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-300 hover:text-white transition-colors"
+                          aria-label={showPassword ? "Hide password" : "Show password"}
                         >
                           {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                         </button>
@@ -201,31 +288,47 @@ export default function Login() {
 
                     <div className="flex items-center justify-between text-sm">
                       <label className="flex items-center gap-2 text-emerald-200 cursor-pointer">
-                        <input type="checkbox" id="remember" className="h-4 w-4 rounded border-white/30 bg-white/10 text-emerald-500 focus:ring-emerald-500" />
+                        <input
+                          type="checkbox"
+                          id="remember"
+                          className="h-4 w-4 rounded border-white/30 bg-white/10 text-emerald-500 focus:ring-emerald-500"
+                        />
                         Remember me
                       </label>
-                      <Link
-                        to="/forgot-password"
-                        className="text-emerald-300 hover:text-white transition-colors font-medium"
-                      >
+                      <Link to="/forgot-password" className="text-emerald-300 hover:text-white transition-colors font-medium">
                         Forgot password?
                       </Link>
                     </div>
 
                     <button
                       type="submit"
-                      disabled={isLoading}
-                      className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-emerald-500/25"
+                      disabled={isLoading || isThrottled}
+                      className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-emerald-500/25"
+                      aria-busy={isLoading}
                     >
-                      {isLoading ? "Signing in..." : "Login to FBEconnect"}
-                      {!isLoading && <ArrowRight className="w-5 h-5" />}
+                      {isLoading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />
+                          Signing in...
+                        </>
+                      ) : isThrottled ? (
+                        <>
+                          <Lock className="w-4 h-4" aria-hidden="true" />
+                          Locked ({remainingSeconds}s)
+                        </>
+                      ) : (
+                        <>
+                          Login to FBEconnect
+                          <ArrowRight className="w-5 h-5" aria-hidden="true" />
+                        </>
+                      )}
                     </button>
                   </form>
                 )}
 
                 <div className="mt-6 pt-5 border-t border-white/20">
-                  <div className="bg-emerald-900/40 rounded-xl p-5 mb-5 border border-emerald-500/20 text-center shadow-inner">
-                    <Shield className="w-6 h-6 text-emerald-400 mx-auto mb-2" />
+                  <div className="bg-emerald-900/40 rounded-xl p-4 mb-5 border border-emerald-500/20 text-center shadow-inner">
+                    <Shield className="w-6 h-6 text-emerald-400 mx-auto mb-2" aria-hidden="true" />
                     <p className="text-emerald-50 text-sm font-bold mb-1 tracking-wide">Secure Login</p>
                     <p className="text-emerald-200/80 text-xs leading-relaxed max-w-xs mx-auto">
                       Your connection is protected by enterprise-grade security and end-to-end encryption.
@@ -238,7 +341,6 @@ export default function Login() {
                     </Link>
                   </p>
                 </div>
-
               </div>
             </div>
           </div>

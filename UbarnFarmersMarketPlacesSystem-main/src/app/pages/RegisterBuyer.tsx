@@ -5,6 +5,10 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { toast } from "sonner";
 import { signUp, saveBuyerProfile } from "../../lib/auth";
+import { validateEmail, validatePassword, passwordsMatch, validatePhone, validateName } from "../../utils/validation";
+import { validateDocumentUpload } from "../../utils/fileValidation";
+
+// ⚠️ BACKEND: All inputs must also be validated server-side via RLS/Edge Functions
 
 export default function RegisterBuyer() {
   const navigate = useNavigate();
@@ -33,20 +37,17 @@ export default function RegisterBuyer() {
 
   const handleNext = () => {
     if (currentStep === 1) {
-      if (!formData.fullName || !formData.email || !formData.phone || !formData.password) {
-        toast.error("Please fill in all required fields");
-        return;
-      }
-      if (formData.password !== formData.confirmPassword) {
-        toast.error("Passwords do not match");
-        return;
-      }
+      const nameResult = validateName(formData.fullName);
+      if (!nameResult.valid) { toast.error(nameResult.error!); return; }
+      if (!validateEmail(formData.email)) { toast.error("Please enter a valid email address"); return; }
+      if (!validatePhone(formData.phone)) { toast.error("Please enter a valid phone number (e.g. 0712345678)"); return; }
+      const pwResult = validatePassword(formData.password);
+      if (!pwResult.valid) { toast.error(pwResult.errors[0]); return; }
+      if (!passwordsMatch(formData.password, formData.confirmPassword)) { toast.error("Passwords do not match"); return; }
     }
     if (currentStep === 2) {
-      if (!formData.location || formData.preferredProducts.length === 0) {
-        toast.error("Please fill in all fields and select at least one product type");
-        return;
-      }
+      if (!formData.location.trim()) { toast.error("Location is required"); return; }
+      if (formData.preferredProducts.length === 0) { toast.error("Select at least one product type"); return; }
     }
     if (currentStep < 3) {
       setCurrentStep((prev) => prev + 1);
@@ -67,6 +68,12 @@ export default function RegisterBuyer() {
       toast.error("Please accept the terms and conditions");
       return;
     }
+    // ── File upload validation ─────────────────────────────────────
+    if (formData.idDocument) {
+      const docResult = await validateDocumentUpload(formData.idDocument);
+      if (!docResult.valid) { toast.error(docResult.error!); return; }
+    }
+    // ⚠️ BACKEND: Re-validate file MIME and size in Supabase Storage policies
     setIsSubmitting(true);
     try {
       const data = await signUp(formData.email, formData.password, formData.fullName, "buyer");

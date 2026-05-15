@@ -1,0 +1,16 @@
+# FBEconnect – Crawler Directives
+# ─────────────────────────────────
+# Public pages are accessible to all crawlers.
+# Protected routes (/app/*), API endpoints, and admin pages are blocked.
+
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /register
+Allow: /privacy
+Allow: /terms
+
+Disallow: /app/
+Disallow: /api/
+
+Sitemap: https://fbeconnect.vercel.app/sitemap.xml

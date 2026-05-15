@@ -33,4 +33,29 @@ export default defineConfig({
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
+
+  build: {
+    // ── Security: Do NOT ship source maps to production ──────────────
+    sourcemap: false,
+
+    // ── Performance: Use esbuild for fast minification ───────────────
+    minify: 'esbuild',
+
+    // ── Code Splitting: Split vendor chunks for better caching ───────
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Core React runtime – rarely changes, caches long-term
+          'vendor-react': ['react', 'react-dom', 'react-router'],
+          // Supabase SDK – separate chunk
+          'vendor-supabase': ['@supabase/supabase-js'],
+          // Heavy UI libraries – load on demand
+          'vendor-charts': ['recharts'],
+        },
+      },
+    },
+
+    // ── Increase chunk warning threshold for rich UI apps ────────────
+    chunkSizeWarningLimit: 600,
+  },
 })

@@ -5,6 +5,21 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { toast } from "sonner";
 import { signUp, saveFarmerProfile, saveFarmerVerification } from "../../lib/auth";
+import {
+  validateEmail,
+  validatePassword,
+  passwordsMatch,
+  validatePhone,
+  validateName,
+  validateNationalId,
+  validateYearsExperience,
+} from "../../utils/validation";
+import { validateDocumentUpload, validateImageUpload } from "../../utils/fileValidation";
+
+// ⚠️ BACKEND: All user inputs must ALSO be validated server-side via:
+//   - Supabase Row-Level Security (RLS) policies
+//   - Supabase Edge Functions / Database Functions
+//   - Supabase Auth password policies (min length in project settings)
 
 export default function RegisterFarmer() {
   const navigate = useNavigate();
@@ -34,22 +49,44 @@ export default function RegisterFarmer() {
   };
 
   const handleNext = () => {
+    // ── Step 1: Identity Validation ────────────────────────────────
     if (currentStep === 1) {
-      if (!formData.fullName || !formData.nationalId || !formData.phone || !formData.email || !formData.password) {
-        toast.error("Please fill in all required fields");
+      const nameResult = validateName(formData.fullName);
+      if (!nameResult.valid) { toast.error(nameResult.error!); return; }
+
+      const idResult = validateNationalId(formData.nationalId);
+      if (!idResult.valid) { toast.error(idResult.error!); return; }
+
+      if (!validatePhone(formData.phone)) {
+        toast.error("Please enter a valid phone number (e.g. 0712345678 or +254712345678)");
         return;
       }
-      if (formData.password !== formData.confirmPassword) {
+      if (!validateEmail(formData.email)) {
+        toast.error("Please enter a valid email address");
+        return;
+      }
+
+      const pwResult = validatePassword(formData.password);
+      if (!pwResult.valid) { toast.error(pwResult.errors[0]); return; }
+
+      if (!passwordsMatch(formData.password, formData.confirmPassword)) {
         toast.error("Passwords do not match");
         return;
       }
     }
+
+    // ── Step 2: Farm Details Validation ────────────────────────────
     if (currentStep === 2) {
-      if (!formData.farmName || !formData.farmLocation || !formData.yearsExperience || formData.farmingTypes.length === 0) {
-        toast.error("Please fill in all required fields and select at least one farming type");
+      if (!formData.farmName.trim()) { toast.error("Farm name is required"); return; }
+      if (!formData.farmLocation.trim()) { toast.error("Farm location is required"); return; }
+      if (formData.farmingTypes.length === 0) {
+        toast.error("Please select at least one farming type");
         return;
       }
+      const yearsResult = validateYearsExperience(formData.yearsExperience);
+      if (!yearsResult.valid) { toast.error(yearsResult.error!); return; }
     }
+
     if (currentStep < 3) {
       setCurrentStep((prev) => prev + 1);
     }
@@ -69,6 +106,17 @@ export default function RegisterFarmer() {
       toast.error("Please accept the terms and conditions");
       return;
     }
+
+    // ── File upload validation (MIME via magic bytes + size check) ─────
+    if (formData.idDocument) {
+      const docResult = await validateDocumentUpload(formData.idDocument);
+      if (!docResult.valid) { toast.error(docResult.error!); return; }
+    }
+    if (formData.selfie) {
+      const selfieResult = await validateImageUpload(formData.selfie);
+      if (!selfieResult.valid) { toast.error(selfieResult.error!); return; }
+    }
+    // ⚠️ BACKEND: Re-validate file MIME and size in Supabase Storage policies
     setIsSubmitting(true);
     try {
       const data = await signUp(formData.email, formData.password, formData.fullName, "farmer");

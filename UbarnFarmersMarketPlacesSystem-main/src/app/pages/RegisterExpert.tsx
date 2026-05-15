@@ -5,6 +5,10 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { toast } from "sonner";
 import { signUp, saveExpertProfile } from "../../lib/auth";
+import { validateEmail, validatePassword, passwordsMatch, validatePhone, validateName, validateYearsExperience } from "../../utils/validation";
+import { validateDocumentUpload, validateImageUpload } from "../../utils/fileValidation";
+
+// ⚠️ BACKEND: All inputs must also be validated server-side via RLS/Edge Functions
 
 export default function RegisterExpert() {
   const navigate = useNavigate();
@@ -31,20 +35,19 @@ export default function RegisterExpert() {
 
   const handleNext = () => {
     if (currentStep === 1) {
-      if (!formData.fullName || !formData.email || !formData.phone || !formData.password) {
-        toast.error("Please fill in all required fields");
-        return;
-      }
-      if (formData.password !== formData.confirmPassword) {
-        toast.error("Passwords do not match");
-        return;
-      }
+      const nameResult = validateName(formData.fullName);
+      if (!nameResult.valid) { toast.error(nameResult.error!); return; }
+      if (!validateEmail(formData.email)) { toast.error("Please enter a valid email address"); return; }
+      if (!validatePhone(formData.phone)) { toast.error("Please enter a valid phone number (e.g. 0712345678)"); return; }
+      const pwResult = validatePassword(formData.password);
+      if (!pwResult.valid) { toast.error(pwResult.errors[0]); return; }
+      if (!passwordsMatch(formData.password, formData.confirmPassword)) { toast.error("Passwords do not match"); return; }
     }
     if (currentStep === 2) {
-      if (!formData.expertise || !formData.yearsExperience || !formData.institution) {
-        toast.error("Please fill in all required fields");
-        return;
-      }
+      if (!formData.expertise.trim()) { toast.error("Area of expertise is required"); return; }
+      const yearsResult = validateYearsExperience(formData.yearsExperience);
+      if (!yearsResult.valid) { toast.error(yearsResult.error!); return; }
+      if (!formData.institution.trim()) { toast.error("Institution is required"); return; }
     }
     if (currentStep < 3) setCurrentStep((prev) => prev + 1);
   };
@@ -61,6 +64,20 @@ export default function RegisterExpert() {
       toast.error("Please accept the terms and conditions");
       return;
     }
+    // ── File upload validation (MIME via magic bytes + size check) ─────
+    if (formData.idDocument) {
+      const docResult = await validateDocumentUpload(formData.idDocument);
+      if (!docResult.valid) { toast.error(docResult.error!); return; }
+    }
+    if (formData.selfie) {
+      const selfieResult = await validateImageUpload(formData.selfie);
+      if (!selfieResult.valid) { toast.error(selfieResult.error!); return; }
+    }
+    if (formData.certifications) {
+      const certResult = await validateDocumentUpload(formData.certifications);
+      if (!certResult.valid) { toast.error(certResult.error!); return; }
+    }
+    // ⚠️ BACKEND: Re-validate file MIME and size in Supabase Storage policies
     setIsSubmitting(true);
     try {
       const data = await signUp(formData.email, formData.password, formData.fullName, "expert");

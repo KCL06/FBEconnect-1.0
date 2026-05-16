@@ -54,16 +54,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .select("id, full_name, email, phone, role, avatar_url")
         .eq("id", userId)
         .single();
-      if (error) throw error;
-      setProfile(data as Profile);
+      // A PGRST116 error means "no rows" — possible if DB trigger didn't run yet.
+      // In that case, clear the profile but do NOT throw — keeps the user logged in.
+      if (error && error.code !== "PGRST116") throw error;
+      setProfile(data as Profile ?? null);
     } catch {
       // Profile fetch failure should not lock the user out — only clear the profile
       setProfile(null);
+    } finally {
+      // Always ensure loading is cleared even if something unexpected happens
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     let mounted = true;
+
+    // ── Safety net: force-clear loading after 8 s to prevent infinite spinner
+    //    (e.g., network timeout, missing profile row for new expert accounts)
+    const safetyTimer = setTimeout(() => {
+      if (mounted) setLoading(false);
+    }, 8000);
 
     // ── 1. Get the initial session on mount ────────────────────────────────
     supabase.auth.getSession().then(async ({ data: { session: initialSession } }) => {
@@ -72,8 +83,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(initialSession?.user ?? null);
       if (initialSession?.user) {
         await fetchProfile(initialSession.user.id);
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
+    }).catch(() => {
+      if (mounted) setLoading(false);
     });
 
     // ── 2. Subscribe to auth state changes ────────────────────────────────
@@ -90,19 +104,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(changedSession?.user ?? null);
 
         if (changedSession?.user) {
-          // Fetch fresh profile on every auth event
+          // Fetch fresh profile on every auth event (fetchProfile clears loading itself)
           await fetchProfile(changedSession.user.id);
         } else {
           setProfile(null);
+          setLoading(false);
         }
-
-        // Ensure loading is cleared after any auth event
-        setLoading(false);
       }
     );
 
     return () => {
       mounted = false;
+      clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
   }, [fetchProfile]);

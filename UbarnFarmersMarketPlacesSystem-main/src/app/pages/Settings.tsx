@@ -247,7 +247,7 @@ export default function Settings() {
                 }`}
               >
                 <User className="w-5 h-5" />
-                <span className="font-medium">Profile</span>
+                <span className="font-medium">Edit Profile</span>
               </button>
               <button
                 onClick={() => setActiveTab("notifications")}
@@ -303,7 +303,13 @@ export default function Settings() {
           {/* Profile Settings */}
           {activeTab === "profile" && (
           <div className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 p-6">
-            <h2 className="text-2xl font-bold text-white mb-6">Profile Information</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white">Edit Profile</h2>
+              <div className="flex items-center gap-1.5 text-xs text-emerald-400/80 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-1.5">
+                <User className="w-3.5 h-3.5" />
+                All profile edits happen here
+              </div>
+            </div>
 
             <div className="space-y-6">
               <div className="flex items-start gap-6">

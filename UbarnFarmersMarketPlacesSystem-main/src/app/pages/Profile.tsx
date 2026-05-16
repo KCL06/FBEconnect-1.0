@@ -1,366 +1,323 @@
-import { Camera, Mail, Phone, MapPin, Calendar, Edit2, Save, FileText } from "lucide-react";
+import {
+  Camera, Mail, Phone, MapPin, Star, ShoppingBag,
+  Award, Shield, ExternalLink, TrendingUp, Users, Leaf,
+  GraduationCap, Briefcase
+} from "lucide-react";
 import { useState, useEffect } from "react";
-import { toast } from "sonner";
+import { Link } from "react-router";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 
+interface ProfileData {
+  fullName: string;
+  email: string;
+  phone: string;
+  farmName: string;
+  location: string;
+  bio: string;
+  avatarUrl: string;
+  role: string;
+  memberSince: string;
+  // Role-specific
+  specialization?: string;
+  businessName?: string;
+}
+
+const roleConfig: Record<string, { label: string; icon: React.ElementType; color: string; bgColor: string }> = {
+  farmer: { label: "Verified Farmer", icon: Leaf, color: "text-emerald-400", bgColor: "bg-emerald-400/20" },
+  buyer: { label: "Buyer", icon: ShoppingBag, color: "text-blue-400", bgColor: "bg-blue-400/20" },
+  expert: { label: "Agricultural Expert", icon: GraduationCap, color: "text-purple-400", bgColor: "bg-purple-400/20" },
+  admin: { label: "Platform Admin", icon: Shield, color: "text-amber-400", bgColor: "bg-amber-400/20" },
+};
+
 export default function Profile() {
-  const { user } = useAuth();
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
+  const { user, profile: authProfile } = useAuth();
+  const [profileData, setProfileData] = useState<ProfileData>({
     fullName: "",
     email: "",
     phone: "",
     farmName: "",
     location: "",
-    farmSize: "150 acres",
-    established: "2018",
-    specialization: "Mixed Farming",
-    bio: "Passionate farmer committed to sustainable agricultural practices. Growing quality vegetables and grains for local and regional markets.",
-    avatarUrl: ""
+    bio: "",
+    avatarUrl: "",
+    role: "farmer",
+    memberSince: "",
   });
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      fetchProfile();
-    }
+    if (user) fetchProfile();
   }, [user]);
 
   const fetchProfile = async () => {
     try {
+      setIsLoading(true);
       const { data, error } = await supabase
         .from("profiles")
-        .select(`*, farmer_profiles(*)`)
+        .select(`*, farmer_profiles(*), expert_profiles(*), buyer_profiles(*)`)
         .eq("id", user?.id)
         .single();
 
-      if (error) throw error;
-      setFormData(prev => ({
-        ...prev,
+      if (error && error.code !== "PGRST116") throw error;
+      if (!data) return;
+
+      setProfileData({
         fullName: data.full_name || "",
         email: data.email || "",
         phone: data.phone || "",
         farmName: data.farmer_profiles?.farm_name || "",
-        location: data.farmer_profiles?.farm_location || "",
-        avatarUrl: data.avatar_url || ""
-      }));
+        location: data.farmer_profiles?.farm_location || data.buyer_profiles?.location || "",
+        bio: data.farmer_profiles?.bio || data.expert_profiles?.bio || "",
+        avatarUrl: data.avatar_url || "",
+        role: data.role || "farmer",
+        memberSince: data.created_at ? new Date(data.created_at).getFullYear().toString() : new Date().getFullYear().toString(),
+        specialization: data.expert_profiles?.specialization || "",
+        businessName: data.buyer_profiles?.business_name || "",
+      });
     } catch (err: any) {
       console.error("Error fetching profile:", err.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleSave = async () => {
-    if (!user) return;
-    try {
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({
-          full_name: formData.fullName,
-          phone: formData.phone,
-        })
-        .eq("id", user.id);
+  const role = roleConfig[profileData.role] || roleConfig.farmer;
+  const RoleIcon = role.icon;
 
-      if (profileError) throw profileError;
-
-      // Use upsert so it works even if no farmer_profile row exists yet
-      const { error: farmerError } = await supabase
-        .from("farmer_profiles")
-        .upsert({
-          id: user.id,
-          farm_name: formData.farmName,
-          farm_location: formData.location,
-        });
-
-      if (farmerError) console.warn("Farmer profile update skipped:", farmerError.message);
-
-      setIsEditing(false);
-      toast.success("Profile updated successfully!");
-    } catch (err: any) {
-      toast.error("Failed to update profile: " + err.message);
-    }
-  };
+  if (isLoading) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-96">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-3 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+          <p className="text-emerald-300 text-sm">Loading profile…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-8">
-      {/* Header */}
-      <div className="mb-8 relative rounded-2xl overflow-hidden p-8 bg-gradient-to-r from-emerald-800/80 to-emerald-700/80 backdrop-blur-sm">
-        <div 
-          className="absolute inset-0 opacity-20 bg-cover bg-center"
+    <div className="p-6 lg:p-8 max-w-5xl mx-auto">
+
+      {/* ── Hero Banner ─────────────────────────────────────────────── */}
+      <div className="relative rounded-3xl overflow-hidden mb-8 shadow-2xl">
+        {/* Background */}
+        <div
+          className="absolute inset-0 bg-cover bg-center"
           style={{
-            backgroundImage: "url('https://images.unsplash.com/photo-1622676566956-b42b50c84c31?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwZmFybWVyJTIwcG9ydHJhaXR8ZW58MXx8fHwxNzczNDkwMzc1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral')"
+            backgroundImage: "url('https://images.unsplash.com/photo-1622676566956-b42b50c84c31?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080')"
           }}
         />
-        <div className="relative z-10 flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold text-white mb-2">My Profile</h1>
-            <p className="text-emerald-200">Manage your account information</p>
+        <div className="absolute inset-0 bg-gradient-to-b from-emerald-900/70 via-emerald-900/80 to-emerald-950/95" />
+
+        <div className="relative z-10 p-8 pb-0">
+          {/* Top bar */}
+          <div className="flex items-start justify-between mb-8">
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${role.bgColor} ${role.color} border border-current/20`}>
+              <RoleIcon className="w-4 h-4" />
+              {role.label}
+            </div>
+            <Link
+              to="/app/settings"
+              className="flex items-center gap-2 bg-white/15 hover:bg-white/25 backdrop-blur-sm text-white text-sm font-medium px-4 py-2 rounded-xl border border-white/20 transition-all hover:border-emerald-400/50"
+            >
+              <Camera className="w-4 h-4" />
+              Edit Profile
+              <ExternalLink className="w-3 h-3 opacity-60" />
+            </Link>
           </div>
-          <button
-            onClick={() => isEditing ? handleSave() : setIsEditing(true)}
-            className="bg-white/20 hover:bg-white/30 text-white px-6 py-3 rounded-lg flex items-center gap-2 backdrop-blur-sm border border-white/30 transition-all"
-          >
-            {isEditing ? (
-              <>
-                <Save className="w-5 h-5" />
-                Save Changes
-              </>
-            ) : (
-              <>
-                <Edit2 className="w-5 h-5" />
-                Edit Profile
-              </>
-            )}
-          </button>
+
+          {/* Avatar + Name */}
+          <div className="flex items-end gap-6 pb-8">
+            <div className="relative flex-shrink-0">
+              <div
+                className="w-28 h-28 rounded-2xl border-4 border-emerald-400/60 bg-emerald-800 bg-cover bg-center shadow-xl overflow-hidden flex items-center justify-center"
+                style={profileData.avatarUrl ? { backgroundImage: `url('${profileData.avatarUrl}')` } : {}}
+              >
+                {!profileData.avatarUrl && (
+                  <span className="text-5xl select-none">
+                    {profileData.role === "expert" ? "👨‍🏫" : profileData.role === "buyer" ? "🛒" : "👨🏾‍🌾"}
+                  </span>
+                )}
+              </div>
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full border-2 border-emerald-900 flex items-center justify-center">
+                <div className="w-2 h-2 bg-white rounded-full" />
+              </div>
+            </div>
+
+            <div className="pb-2">
+              <h1 className="text-3xl font-bold text-white mb-1">
+                {profileData.fullName || "Your Name"}
+              </h1>
+              <p className="text-emerald-300 font-medium">
+                {profileData.farmName || profileData.businessName || profileData.specialization || "FBEconnect Member"}
+              </p>
+              {profileData.location && (
+                <div className="flex items-center gap-1.5 text-emerald-400/80 text-sm mt-1">
+                  <MapPin className="w-3.5 h-3.5" />
+                  {profileData.location}
+                </div>
+              )}
+              <p className="text-emerald-500 text-xs mt-1">Member since {profileData.memberSince}</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Profile Card */}
-        <div className="lg:col-span-1">
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 sticky top-8">
-            {/* Profile Image */}
-            <div className="relative w-32 h-32 mx-auto mb-4">
-              <div 
-                className="w-full h-full rounded-full bg-cover bg-center border-4 border-emerald-500 overflow-hidden flex items-center justify-center bg-emerald-800"
-                style={{
-                  backgroundImage: formData.avatarUrl ? `url('${formData.avatarUrl}')` : 'none'
-                }}
-              >
-                {!formData.avatarUrl && <span className="text-5xl">👨🏾‍🌾</span>}
-              </div>
-              {isEditing && (
-                <button 
-                  onClick={() => toast.info("Please update your photo in the Settings page.")}
-                  className="absolute bottom-0 right-0 bg-emerald-600 text-white p-2 rounded-full hover:bg-emerald-700 transition-all"
-                >
-                  <Camera className="w-4 h-4" />
-                </button>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {/* ── Left Column ─────────────────────────────────────────────── */}
+        <div className="space-y-5">
+
+          {/* Stats */}
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-5 border border-white/10">
+            <h2 className="text-white font-semibold mb-4 text-sm uppercase tracking-wider opacity-70">Activity</h2>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { value: "125", label: "Products", icon: ShoppingBag, color: "text-emerald-400" },
+                { value: "450", label: "Sales", icon: TrendingUp, color: "text-blue-400" },
+                { value: "4.8", label: "Rating", icon: Star, color: "text-yellow-400" },
+                { value: "98%", label: "Verified", icon: Shield, color: "text-purple-400" },
+              ].map((stat) => (
+                <div key={stat.label} className="bg-white/5 rounded-xl p-3 text-center">
+                  <stat.icon className={`w-4 h-4 ${stat.color} mx-auto mb-1.5`} />
+                  <p className="text-xl font-bold text-white">{stat.value}</p>
+                  <p className="text-xs text-gray-400">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Contact Info */}
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-5 border border-white/10">
+            <h2 className="text-white font-semibold mb-4 text-sm uppercase tracking-wider opacity-70">Contact</h2>
+            <div className="space-y-3">
+              {profileData.email && (
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                    <Mail className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <span className="text-gray-300 text-sm truncate">{profileData.email}</span>
+                </div>
+              )}
+              {profileData.phone && (
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                    <Phone className="w-4 h-4 text-blue-400" />
+                  </div>
+                  <span className="text-gray-300 text-sm">+254 {profileData.phone}</span>
+                </div>
+              )}
+              {!profileData.email && !profileData.phone && (
+                <p className="text-gray-500 text-sm italic">No contact info yet.</p>
               )}
             </div>
+          </div>
 
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-white mb-1">{formData.fullName}</h2>
-              <p className="text-emerald-300 text-sm">{formData.farmName}</p>
-              <p className="text-gray-400 text-xs mt-1">Member since {formData.established}</p>
-            </div>
-
-            {/* Quick Stats */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="bg-emerald-600/20 rounded-lg p-3 text-center">
-                <p className="text-2xl font-bold text-white">125</p>
-                <p className="text-emerald-300 text-xs">Products</p>
-              </div>
-              <div className="bg-blue-600/20 rounded-lg p-3 text-center">
-                <p className="text-2xl font-bold text-white">450</p>
-                <p className="text-blue-300 text-xs">Sales</p>
-              </div>
-              <div className="bg-amber-600/20 rounded-lg p-3 text-center">
-                <p className="text-2xl font-bold text-white">4.8</p>
-                <p className="text-amber-300 text-xs">Rating</p>
-              </div>
-              <div className="bg-purple-600/20 rounded-lg p-3 text-center">
-                <p className="text-2xl font-bold text-white">98%</p>
-                <p className="text-purple-300 text-xs">Verified</p>
-              </div>
-            </div>
-
-            {/* Achievements */}
-            <div className="border-t border-white/10 pt-4">
-              <h3 className="text-white font-semibold mb-3">Achievements</h3>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-emerald-300 text-sm">
-                  <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center text-xs">🏆</div>
-                  Top Seller
+          {/* Achievements */}
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-5 border border-white/10">
+            <h2 className="text-white font-semibold mb-4 text-sm uppercase tracking-wider opacity-70">Achievements</h2>
+            <div className="space-y-2.5">
+              {[
+                { icon: "🏆", label: "Top Seller", color: "bg-yellow-500/20 border-yellow-500/30" },
+                { icon: "✅", label: "Verified Member", color: "bg-emerald-500/20 border-emerald-500/30" },
+                { icon: "⭐", label: "Quality Products", color: "bg-blue-500/20 border-blue-500/30" },
+              ].map((a) => (
+                <div key={a.label} className={`flex items-center gap-3 px-3 py-2 rounded-xl border ${a.color}`}>
+                  <span className="text-base">{a.icon}</span>
+                  <span className="text-white text-sm font-medium">{a.label}</span>
                 </div>
-                <div className="flex items-center gap-2 text-emerald-300 text-sm">
-                  <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center text-xs">✓</div>
-                  Verified Farmer
-                </div>
-                <div className="flex items-center gap-2 text-emerald-300 text-sm">
-                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-xs">⭐</div>
-                  Quality Products
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Profile Details */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Personal Information */}
+        {/* ── Right Column ─────────────────────────────────────────────── */}
+        <div className="lg:col-span-2 space-y-5">
+
+          {/* Bio */}
           <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-            <h3 className="text-2xl font-bold text-white mb-6">Personal Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-emerald-200 text-sm font-medium mb-2">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  value={formData.fullName}
-                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                  disabled={!isEditing}
-                  className={`w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white ${
-                    isEditing ? "focus:outline-none focus:ring-2 focus:ring-emerald-500" : "opacity-70"
-                  }`}
-                />
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-white font-semibold text-sm uppercase tracking-wider opacity-70">About</h2>
+              <Link
+                to="/app/settings"
+                className="text-emerald-400 hover:text-emerald-300 text-xs flex items-center gap-1 transition-colors"
+              >
+                Edit <ExternalLink className="w-3 h-3" />
+              </Link>
+            </div>
+            {profileData.bio ? (
+              <p className="text-gray-300 leading-relaxed">{profileData.bio}</p>
+            ) : (
+              <div className="text-center py-6">
+                <Leaf className="w-10 h-10 text-emerald-600/40 mx-auto mb-3" />
+                <p className="text-gray-500 text-sm mb-3">Tell the community about yourself and your farm.</p>
+                <Link
+                  to="/app/settings"
+                  className="inline-flex items-center gap-1.5 bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 text-sm px-4 py-2 rounded-lg border border-emerald-500/30 transition-all"
+                >
+                  Add Bio in Settings <ExternalLink className="w-3 h-3" />
+                </Link>
               </div>
+            )}
+          </div>
 
-              <div>
-                <label className="block text-emerald-200 text-sm font-medium mb-2">
-                  <Mail className="w-4 h-4 inline-block mr-1" />
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  disabled={!isEditing}
-                  className={`w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white ${
-                    isEditing ? "focus:outline-none focus:ring-2 focus:ring-emerald-500" : "opacity-70"
-                  }`}
-                />
-              </div>
-
-              <div>
-                <label className="block text-emerald-200 text-sm font-medium mb-2">Phone Number</label>
-                <div className={`relative flex shadow-sm rounded-lg overflow-hidden border border-white/20 ${isEditing ? 'focus-within:ring-2 focus-within:ring-emerald-500' : 'opacity-70'}`}>
-                  <span className="inline-flex items-center px-4 bg-white/5 text-emerald-300 border-r border-white/20 font-medium">
-                    +254
-                  </span>
-                  <div className="relative flex-1">
-                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 9) })}
-                      disabled={!isEditing}
-                      placeholder="712 345 678"
-                      className="w-full bg-white/10 text-white pl-10 pr-4 py-3 focus:outline-none transition-all"
-                    />
+          {/* Role-specific detail card */}
+          {profileData.role === "farmer" && (
+            <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+              <h2 className="text-white font-semibold text-sm uppercase tracking-wider opacity-70 mb-4">Farm Details</h2>
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { label: "Farm Name", value: profileData.farmName || "—" },
+                  { label: "Location", value: profileData.location || "—" },
+                ].map((f) => (
+                  <div key={f.label} className="bg-white/5 rounded-xl p-4">
+                    <p className="text-xs text-gray-500 mb-1">{f.label}</p>
+                    <p className="text-white font-medium">{f.value}</p>
                   </div>
-                </div>
-                {isEditing && <p className="text-emerald-400/60 text-xs mt-1.5">Enter without the country code</p>}
+                ))}
               </div>
+            </div>
+          )}
 
-              <div>
-                <label className="block text-emerald-200 text-sm font-medium mb-2">Location / Address</label>
-                <div className={`relative shadow-sm rounded-lg overflow-hidden border border-white/20 ${isEditing ? 'focus-within:ring-2 focus-within:ring-emerald-500' : 'opacity-70'}`}>
-                  <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-emerald-400" />
-                  <input
-                    type="text"
-                    value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    disabled={!isEditing}
-                    placeholder="e.g., Nairobi, Kenya"
-                    className="w-full bg-white/10 text-white pl-10 pr-4 py-3 focus:outline-none transition-all"
-                  />
+          {profileData.role === "expert" && profileData.specialization && (
+            <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+              <h2 className="text-white font-semibold text-sm uppercase tracking-wider opacity-70 mb-4">Expertise</h2>
+              <div className="flex items-center gap-3 bg-purple-500/10 rounded-xl p-4 border border-purple-500/20">
+                <Briefcase className="w-5 h-5 text-purple-400 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-gray-500">Specialization</p>
+                  <p className="text-white font-medium capitalize">{profileData.specialization}</p>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Farm Information */}
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-            <h3 className="text-2xl font-bold text-white mb-6">Farm Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-emerald-200 text-sm font-medium mb-2">
-                  Farm Name
-                </label>
-                <input
-                  type="text"
-                  value={formData.farmName}
-                  onChange={(e) => setFormData({ ...formData, farmName: e.target.value })}
-                  disabled={!isEditing}
-                  className={`w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white ${
-                    isEditing ? "focus:outline-none focus:ring-2 focus:ring-emerald-500" : "opacity-70"
-                  }`}
-                />
-              </div>
-
-              <div>
-                <label className="block text-emerald-200 text-sm font-medium mb-2">
-                  Farm Size
-                </label>
-                <input
-                  type="text"
-                  value={formData.farmSize}
-                  onChange={(e) => setFormData({ ...formData, farmSize: e.target.value })}
-                  disabled={!isEditing}
-                  className={`w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white ${
-                    isEditing ? "focus:outline-none focus:ring-2 focus:ring-emerald-500" : "opacity-70"
-                  }`}
-                />
-              </div>
-
-              <div>
-                <label className="block text-emerald-200 text-sm font-medium mb-2">
-                  <Calendar className="w-4 h-4 inline-block mr-1" />
-                  Year Established
-                </label>
-                <input
-                  type="text"
-                  value={formData.established}
-                  onChange={(e) => setFormData({ ...formData, established: e.target.value })}
-                  disabled={!isEditing}
-                  className={`w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white ${
-                    isEditing ? "focus:outline-none focus:ring-2 focus:ring-emerald-500" : "opacity-70"
-                  }`}
-                />
-              </div>
-
-              <div>
-                <label className="block text-emerald-200 text-sm font-medium mb-2">
-                  Specialization
-                </label>
-                <input
-                  type="text"
-                  value={formData.specialization}
-                  onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
-                  disabled={!isEditing}
-                  className={`w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white ${
-                    isEditing ? "focus:outline-none focus:ring-2 focus:ring-emerald-500" : "opacity-70"
-                  }`}
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <div className="flex justify-between items-end mb-2">
-                  <label className="block text-emerald-200 text-sm font-medium">About You (Bio)</label>
-                  {isEditing && (
-                    <span className={`text-xs ${(formData.bio || "").length > 400 ? 'text-red-400' : 'text-emerald-400/60'}`}>
-                      {(formData.bio || "").length} / 500
-                    </span>
-                  )}
-                </div>
-                <div className={`relative shadow-sm rounded-lg overflow-hidden border border-white/20 bg-white/10 ${isEditing ? 'focus-within:ring-2 focus-within:ring-emerald-500' : 'opacity-70'}`}>
-                  <FileText className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                  <textarea
-                    value={formData.bio}
-                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                    disabled={!isEditing}
-                    rows={4}
-                    maxLength={500}
-                    placeholder="Tell us a bit about your farm, what you grow, or your experience..."
-                    className="w-full bg-transparent border-none px-4 py-3 pl-10 text-white resize-none focus:outline-none transition-all"
-                  />
+          {profileData.role === "buyer" && profileData.businessName && (
+            <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+              <h2 className="text-white font-semibold text-sm uppercase tracking-wider opacity-70 mb-4">Business</h2>
+              <div className="flex items-center gap-3 bg-blue-500/10 rounded-xl p-4 border border-blue-500/20">
+                <ShoppingBag className="w-5 h-5 text-blue-400 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-gray-500">Business Name</p>
+                  <p className="text-white font-medium">{profileData.businessName}</p>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Security Settings */}
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-            <h3 className="text-2xl font-bold text-white mb-6">Security Settings</h3>
-            <div className="space-y-4">
-              <button className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg transition-all">
-                Change Password
-              </button>
-              <button className="w-full md:w-auto bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-lg transition-all ml-0 md:ml-4">
-                Enable Two-Factor Authentication
-              </button>
+          {/* Edit CTA Banner */}
+          <div className="bg-gradient-to-br from-emerald-800/60 to-emerald-700/40 backdrop-blur-sm rounded-2xl p-6 border border-emerald-500/30 flex items-center justify-between">
+            <div>
+              <p className="text-white font-semibold mb-1">Keep your profile up to date</p>
+              <p className="text-emerald-300 text-sm">Update your info, photo, password and more in Settings.</p>
             </div>
+            <Link
+              to="/app/settings"
+              className="flex-shrink-0 flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-5 py-2.5 rounded-xl transition-all shadow-lg hover:shadow-emerald-500/25 ml-4"
+            >
+              <Users className="w-4 h-4" />
+              Go to Settings
+            </Link>
           </div>
         </div>
       </div>

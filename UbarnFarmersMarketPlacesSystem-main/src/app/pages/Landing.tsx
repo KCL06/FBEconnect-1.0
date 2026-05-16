@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router";
-import { Sprout, TrendingUp, Users, ShoppingCart, CheckCircle, ArrowRight, GraduationCap, Eye, EyeOff, Shield, ChevronDown, MapPin, Mail, Phone, Leaf, Loader2 } from "lucide-react";
+import { Sprout, TrendingUp, Users, ShoppingCart, CheckCircle, ArrowRight, GraduationCap, Eye, EyeOff, Shield, ChevronDown, MapPin, Mail, Phone, Leaf, Loader2, Quote } from "lucide-react";
 import { toast } from "sonner";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import Logo from "../components/Logo";
 import { signIn } from "../../lib/auth";
 import { useLanguage } from "../context/LanguageContext";
+import { useAuth } from "../context/AuthContext";
 
 type UserRole = "farmer" | "buyer" | "expert" | null;
 
@@ -86,6 +87,7 @@ const testimonials = [
 export default function Landing() {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { session, loading: authLoading } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [formStep, setFormStep] = useState(1);
   const [selectedRole, setSelectedRole] = useState<UserRole>(null);
@@ -107,6 +109,15 @@ export default function Landing() {
   const [showPassword, setShowPassword] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
+  // ── Redirect already-authenticated users (or after login) ─────────────────
+  // Let auth state settle via onAuthStateChange before navigating — prevents
+  // the "blank screen" caused by navigating before ProtectedRoute sees the session.
+  useEffect(() => {
+    if (!authLoading && session) {
+      navigate("/app", { replace: true });
+    }
+  }, [session, authLoading, navigate]);
+
   const handleDemoLogin = async (role: "Farmer" | "Buyer") => {
     setIsDemoLoading(true);
     try {
@@ -114,7 +125,7 @@ export default function Landing() {
       const password = role === "Farmer" ? "FarmerDemo2024!" : "BuyerDemo2024!";
       await signIn(email, password);
       toast.success(`Logged in as Demo ${role}!`);
-      navigate("/app");
+      // Don't navigate here — the useEffect above handles it once session is set
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Demo login failed";
       toast.error(msg);
@@ -134,12 +145,12 @@ export default function Landing() {
     }
 
     if (isLogin) {
-      // Real Supabase login
+      // Real Supabase login — navigate is handled by the session useEffect above
       setIsSubmitting(true);
       try {
         await signIn(formData.email, formData.password);
         toast.success("Welcome back to FBEconnect!");
-        navigate("/app");
+        // Don't call navigate here — useEffect watches session and redirects cleanly
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Login failed. Please check your credentials.";
         toast.error(msg);
@@ -721,32 +732,56 @@ export default function Landing() {
 
           {/* Testimonials */}
           <div className="py-20">
-            <h2 className="text-4xl font-bold text-white text-center mb-12">
-              What Farmers Are Saying
-            </h2>
+            <div className="text-center mb-14">
+              <p className="text-emerald-400 font-semibold text-sm uppercase tracking-widest mb-3">Testimonials</p>
+              <h2 className="text-4xl font-bold text-white">
+                What Farmers Are Saying
+              </h2>
+              <div className="w-20 h-1 bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full mx-auto mt-4" />
+            </div>
             <div className="grid md:grid-cols-2 gap-8">
               {testimonials.map((testimonial, index) => (
                 <div
                   key={index}
-                  className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20"
+                  className="group bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 hover:bg-white/15 hover:border-emerald-400/40 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
                 >
-                  <div className="flex items-center gap-4 mb-6">
+                  {/* Decorative large quote mark background */}
+                  <div className="absolute top-4 right-6 text-8xl text-emerald-400/10 font-serif leading-none select-none pointer-events-none" aria-hidden="true">
+                    &#8220;
+                  </div>
+
+                  {/* Opening quote icon */}
+                  <div className="mb-5">
+                    <Quote className="w-8 h-8 text-emerald-400/60 fill-emerald-400/20" />
+                  </div>
+
+                  {/* Quote text with Lora serif */}
+                  <p
+                    style={{ fontFamily: "'Lora', Georgia, serif" }}
+                    className="text-white text-lg leading-relaxed mb-6 font-normal"
+                  >
+                    {testimonial.quote}
+                  </p>
+
+                  {/* Stars */}
+                  <div className="flex gap-1 mb-5">
+                    {[...Array(5)].map((_, i) => (
+                      <svg key={i} className="w-4 h-4 text-yellow-400 fill-yellow-400" viewBox="0 0 20 20" aria-hidden="true">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    ))}
+                  </div>
+
+                  {/* Author */}
+                  <div className="flex items-center gap-3 border-t border-white/10 pt-5">
                     <div
-                      className="w-16 h-16 bg-cover bg-center rounded-full border-4 border-emerald-400"
+                      className="w-12 h-12 bg-cover bg-center rounded-full border-2 border-emerald-400 flex-shrink-0"
                       style={{ backgroundImage: `url(${testimonial.image})` }}
                     />
                     <div>
-                      <p className="text-white font-bold text-lg">{testimonial.name}</p>
-                      <p className="text-emerald-300 text-sm">{testimonial.farm}</p>
+                      <p className="text-white font-semibold text-sm">{testimonial.name}</p>
+                      <p className="text-emerald-300 text-xs">{testimonial.farm}</p>
                     </div>
-                  </div>
-                  <p className="text-emerald-100 text-lg leading-relaxed italic">
-                    "{testimonial.quote}"
-                  </p>
-                  <div className="flex gap-1 mt-4">
-                    {[...Array(5)].map((_, i) => (
-                      <CheckCircle key={i} className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-                    ))}
                   </div>
                 </div>
               ))}

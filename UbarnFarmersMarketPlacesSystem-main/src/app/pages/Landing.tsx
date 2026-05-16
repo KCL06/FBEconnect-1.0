@@ -108,15 +108,16 @@ export default function Landing() {
   const [isDemoLoading, setIsDemoLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+  const [hasJustLoggedIn, setHasJustLoggedIn] = useState(false);
 
-  // ── Redirect already-authenticated users (or after login) ─────────────────
-  // Let auth state settle via onAuthStateChange before navigating — prevents
-  // the "blank screen" caused by navigating before ProtectedRoute sees the session.
+  // ── Redirect after explicit login ─────────────────
+  // We only auto-redirect if the user *just* logged in via this page's form.
+  // Existing logged-in users who visit the landing page will stay on the page.
   useEffect(() => {
-    if (!authLoading && session) {
+    if (hasJustLoggedIn && !authLoading && session) {
       navigate("/app", { replace: true });
     }
-  }, [session, authLoading, navigate]);
+  }, [session, authLoading, hasJustLoggedIn, navigate]);
 
   const handleDemoLogin = async (role: "Farmer" | "Buyer") => {
     setIsDemoLoading(true);
@@ -125,7 +126,7 @@ export default function Landing() {
       const password = role === "Farmer" ? "FarmerDemo2024!" : "BuyerDemo2024!";
       await signIn(email, password);
       toast.success(`Logged in as Demo ${role}!`);
-      // Don't navigate here — the useEffect above handles it once session is set
+      setHasJustLoggedIn(true);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Demo login failed";
       toast.error(msg);
@@ -150,7 +151,7 @@ export default function Landing() {
       try {
         await signIn(formData.email, formData.password);
         toast.success("Welcome back to FBEconnect!");
-        // Don't call navigate here — useEffect watches session and redirects cleanly
+        setHasJustLoggedIn(true);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Login failed. Please check your credentials.";
         toast.error(msg);

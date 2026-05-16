@@ -13,6 +13,7 @@ export default function Header({ isAuthenticated = false }: HeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
   const { language, setLanguage, t } = useLanguage();
+  const { signOut } = useAuth();
 
   const toggleLanguage = () => {
     setLanguage(language === 'en' ? 'sw' : 'en');
@@ -91,7 +92,10 @@ export default function Header({ isAuthenticated = false }: HeaderProps) {
                   >
                     Profile
                   </Link>
-                  <button className="px-4 py-2 bg-red-600/80 hover:bg-red-600 text-white rounded-lg transition-all text-sm font-medium">
+                  <button 
+                    onClick={() => signOut()}
+                    className="px-4 py-2 bg-red-600/80 hover:bg-red-600 text-white rounded-lg transition-all text-sm font-medium"
+                  >
                     Logout
                   </button>
                 </>
@@ -164,7 +168,10 @@ export default function Header({ isAuthenticated = false }: HeaderProps) {
                     >
                       Profile
                     </Link>
-                    <button className="px-4 py-3 bg-red-600/80 text-white rounded-lg text-sm font-medium text-left">
+                    <button 
+                      onClick={() => { signOut(); setIsMobileMenuOpen(false); }}
+                      className="px-4 py-3 bg-red-600/80 text-white rounded-lg text-sm font-medium text-left"
+                    >
                       Logout
                     </button>
                   </>

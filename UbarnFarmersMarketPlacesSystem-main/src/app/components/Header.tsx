@@ -4,6 +4,7 @@ import { Menu, X, Globe } from "lucide-react";
 import { useState } from "react";
 import Logo from "./Logo";
 import { useLanguage } from "../context/LanguageContext";
+import { useAuth } from "../context/AuthContext";
 
 interface HeaderProps {
   isAuthenticated?: boolean;

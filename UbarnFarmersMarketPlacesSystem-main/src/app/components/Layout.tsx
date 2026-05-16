@@ -114,7 +114,7 @@ export default function Layout() {
       {/* Background */}
       <div
         className="absolute inset-0 opacity-10 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1724531281596-cfae90d5a082?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080')" }}
+        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1625246333195-78d9c38ad449?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1920')" }}
       />
 
       {/* Mobile Overlay */}

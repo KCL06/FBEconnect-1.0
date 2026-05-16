@@ -187,7 +187,7 @@ export default function Landing() {
       <div
         className="absolute inset-0 opacity-10 bg-cover bg-center"
         style={{
-          backgroundImage: "url('https://images.unsplash.com/photo-1724531281596-cfae90d5a082?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZ3JpY3VsdHVyYWwlMjBmYXJtbGFuZCUyMGFlcmlhbCUyMHZpZXd8ZW58MXx8fHwxNzczMjI2Mjg0fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral')"
+          backgroundImage: "url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1920')"
         }}
       />
 

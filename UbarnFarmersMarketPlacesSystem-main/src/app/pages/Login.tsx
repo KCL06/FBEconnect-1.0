@@ -141,7 +141,7 @@ export default function Login() {
       {/* Background texture */}
       <div
         className="absolute inset-0 opacity-10 bg-cover bg-center"
-        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1724531281596-cfae90d5a082?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080')" }}
+        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1464226184884-fa280b87c399?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1920')" }}
         aria-hidden="true"
       />
 

@@ -228,7 +228,7 @@ export default function Layout() {
                 { path: "/app/expert-consultations", label: "My Consultations", icon: CalendarCheck, roles: ["expert"] },
                 { path: "/app/expert-knowledge", label: "Knowledge", icon: BookOpen, roles: ["farmer", "buyer", "expert", "admin"] },
                 { path: "/app/market-prices", tKey: "price", label: "Prices", icon: TrendingUp, roles: ["farmer", "buyer"] },
-              ].filter(item => !profile?.role || item.roles.includes(profile.role)).map((item) => {
+              ].filter(item => profile?.role && item.roles.includes(profile.role)).map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path;
                 const label = item.tKey ? t(item.tKey as any) : item.label;

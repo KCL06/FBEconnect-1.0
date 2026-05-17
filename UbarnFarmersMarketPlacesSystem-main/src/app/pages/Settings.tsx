@@ -4,11 +4,13 @@ import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../context/AuthContext";
+import { useLanguage } from "../context/LanguageContext";
 
 type SettingsTab = "profile" | "notifications" | "security" | "payment" | "language" | "privacy";
 
 export default function Settings() {
   const { user } = useAuth();
+  const { language, setLanguage } = useLanguage();
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -698,7 +700,11 @@ export default function Settings() {
             <div className="space-y-6">
               <div>
                 <label className="block text-emerald-200 text-sm mb-2">Language</label>
-                <select className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-emerald-500 [&>option]:bg-emerald-900 [&>option]:text-white">
+                <select 
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value as "en" | "sw")}
+                  className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-emerald-500 [&>option]:bg-emerald-900 [&>option]:text-white"
+                >
                   <option value="en">English</option>
                   <option value="sw">Swahili</option>
                   <option value="fr">French</option>

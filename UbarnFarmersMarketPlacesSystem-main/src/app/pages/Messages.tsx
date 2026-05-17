@@ -1,6 +1,6 @@
 import { Search, Send, Paperclip, Phone, Video, ShieldAlert } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "react-router";
+import { useSearchParams, useNavigate } from "react-router";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "sonner";
@@ -33,6 +33,7 @@ const filterContactInfo = (text: string) => {
 export default function Messages() {
   const { profile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const contactParam = searchParams.get("contactId");
   const messageParam = searchParams.get("message");
   
@@ -208,6 +209,29 @@ export default function Messages() {
     }
   };
 
+  const handleStartVideoCall = async () => {
+    if (!profile || !selectedContactId) return;
+
+    // Generate a secure room ID
+    const roomId = Math.random().toString(36).substring(7) + Date.now().toString(36);
+    const callUrl = `${window.location.origin}/app/call/${roomId}`;
+
+    // Send the message
+    const { error } = await supabase.from("messages").insert({
+      sender_id: profile.id,
+      receiver_id: selectedContactId,
+      content: `📞 I'm starting a video call. Click here to join: ${callUrl}`,
+    });
+
+    if (error) {
+      toast.error("Failed to start video call");
+      return;
+    }
+
+    // Redirect to the call room
+    navigate(`/app/call/${roomId}`);
+  };
+
   return (
     <div className="p-8">
       {/* Header */}
@@ -273,11 +297,12 @@ export default function Messages() {
                       className="p-2 bg-emerald-900/50 hover:bg-emerald-800 rounded-lg transition-colors border border-emerald-700/50 flex items-center gap-2 text-emerald-300 text-sm font-medium mr-2"
                     >
                       <ShieldAlert className="w-4 h-4" />
-                      <span className="hidden sm:inline">Ask Admin</span>
                     </button>
                   )}
-                  <button className="p-2 hover:bg-white/10 rounded-lg transition-colors"><Phone className="w-5 h-5 text-emerald-300" /></button>
-                  <button className="p-2 hover:bg-white/10 rounded-lg transition-colors"><Video className="w-5 h-5 text-emerald-300" /></button>
+                  <button className="p-2 hover:bg-white/10 rounded-lg transition-colors" title="Voice Call (Coming Soon)"><Phone className="w-5 h-5 text-emerald-300" /></button>
+                  <button onClick={handleStartVideoCall} className="p-2 hover:bg-white/10 rounded-lg transition-colors shadow-lg bg-emerald-600/30 border border-emerald-500/50" title="Start Video Call">
+                    <Video className="w-5 h-5 text-white" />
+                  </button>
                 </div>
               </div>
 
@@ -289,7 +314,16 @@ export default function Messages() {
                   return (
                     <div key={message.id} className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
                       <div className={`max-w-[70%] ${isOwn ? "bg-emerald-600 text-white" : "bg-white/10 text-white"} rounded-lg p-3 shadow-md`}>
-                        <p className="text-sm mb-1">{message.content}</p>
+                        {message.content.includes("/app/call/") ? (
+                          <div className="flex flex-col gap-2">
+                            <p className="text-sm">📞 {isOwn ? "You started a video call." : "Incoming video call!"}</p>
+                            <a href={message.content.split(' ').pop()} target="_blank" rel="noreferrer" className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold py-2 px-3 rounded text-center transition-all">
+                              {isOwn ? "Rejoin Call" : "Join Video Call"}
+                            </a>
+                          </div>
+                        ) : (
+                          <p className="text-sm mb-1 whitespace-pre-wrap break-words">{message.content}</p>
+                        )}
                         <p className={`text-[10px] text-right mt-1 ${isOwn ? "text-emerald-200" : "text-gray-400"}`}>{time}</p>
                       </div>
                     </div>

@@ -18,6 +18,39 @@ import Loading from "./components/Loading";
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
+// ── Error Boundary for Lazy Loading ──────────────────────────────────────────
+import { useRouteError } from "react-router";
+
+function GlobalErrorBoundary() {
+  const error = useRouteError() as Error;
+  
+  // Catch Vite chunk load errors (happens when deploying new versions)
+  if (error?.message?.includes("Failed to fetch dynamically imported module")) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-emerald-900 text-white p-8 text-center">
+        <h1 className="text-3xl font-bold mb-4">Update Available</h1>
+        <p className="text-emerald-200 mb-6 max-w-md">
+          A new version of the platform has been released. Your browser is trying to load an old file that no longer exists.
+        </p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg"
+        >
+          Refresh Page to Update
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-red-900 text-white p-8 text-center">
+      <h1 className="text-3xl font-bold mb-4">Application Error</h1>
+      <p className="text-red-200 mb-6">{error?.message || "An unexpected error occurred."}</p>
+      <button onClick={() => window.location.href = '/'} className="bg-white text-red-900 px-6 py-2 rounded-lg font-bold">Return Home</button>
+    </div>
+  );
+}
+
 // ── Public Pages (no auth required) ──────────────────────────────────────────
 const Landing           = lazy(() => import("./pages/Landing"));
 const Login             = lazy(() => import("./pages/Login"));
@@ -49,6 +82,7 @@ const ExpertConsultations = lazy(() => import("./pages/ExpertConsultations"));
 const Cart              = lazy(() => import("./pages/Cart"));
 const Settings          = lazy(() => import("./pages/Settings"));
 const Profile           = lazy(() => import("./pages/Profile"));
+const VideoCall         = lazy(() => import("./pages/VideoCall"));
 
 // ── Admin-Only Pages ──────────────────────────────────────────────────────────
 const AdminDashboard    = lazy(() => import("./pages/AdminDashboard"));
@@ -72,48 +106,58 @@ export const router = createBrowserRouter([
   {
     path: "/",
     element: <PageSuspense><Landing /></PageSuspense>,
-    errorElement: <PageSuspense><NotFound /></PageSuspense>,
+    errorElement: <GlobalErrorBoundary />,
   },
   {
     path: "/privacy",
     element: <PageSuspense><Privacy /></PageSuspense>,
+    errorElement: <GlobalErrorBoundary />,
   },
   {
     path: "/terms",
     element: <PageSuspense><Terms /></PageSuspense>,
+    errorElement: <GlobalErrorBoundary />,
   },
   {
     path: "/login",
     element: <PageSuspense><Login /></PageSuspense>,
+    errorElement: <GlobalErrorBoundary />,
   },
   {
     path: "/register",
     element: <PageSuspense><Register /></PageSuspense>,
+    errorElement: <GlobalErrorBoundary />,
   },
   {
     path: "/forgot-password",
     element: <PageSuspense><ForgotPassword /></PageSuspense>,
+    errorElement: <GlobalErrorBoundary />,
   },
   {
     path: "/update-password",
     element: <PageSuspense><UpdatePassword /></PageSuspense>,
+    errorElement: <GlobalErrorBoundary />,
   },
   {
     path: "/register/farmer",
     element: <PageSuspense><RegisterFarmer /></PageSuspense>,
+    errorElement: <GlobalErrorBoundary />,
   },
   {
     path: "/register/buyer",
     element: <PageSuspense><RegisterBuyer /></PageSuspense>,
+    errorElement: <GlobalErrorBoundary />,
   },
   {
     path: "/register/expert",
     element: <PageSuspense><RegisterExpert /></PageSuspense>,
+    errorElement: <GlobalErrorBoundary />,
   },
 
   // ── Protected Routes (requires authentication) ───────────────────────────
   {
     element: <ProtectedRoute />,                       // 🔐 Auth gate
+    errorElement: <GlobalErrorBoundary />,
     children: [
       {
         path: "/app",
@@ -122,11 +166,13 @@ export const router = createBrowserRouter([
             <Layout />
           </PageSuspense>
         ),
+        errorElement: <GlobalErrorBoundary />,
         children: [
           // ── Available to all authenticated roles ────────────────────────
           { index: true,                   element: <PageSuspense><Dashboard /></PageSuspense> },
           { path: "market-prices",         element: <PageSuspense><MarketPrices /></PageSuspense> },
           { path: "messages",              element: <PageSuspense><Messages /></PageSuspense> },
+          { path: "call/:roomId",          element: <PageSuspense><VideoCall /></PageSuspense> },
           { path: "notification",          element: <PageSuspense><Notification /></PageSuspense> },
           { path: "reviews",               element: <PageSuspense><ReviewsRatings /></PageSuspense> },
           { path: "expert-knowledge",      element: <PageSuspense><ExpertKnowledge /></PageSuspense> },

@@ -1,21 +1,22 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../../lib/supabase";
 import { Profile, UserRole } from "../../lib/auth";
 
 /**
- * FBEconnect – Auth Context
+ * FBEconnect – Auth Context (BULLETPROOF v3)
  * ─────────────────────────────────────────────────────────────────────────────
- * Provides authentication state, profile data, and role information
- * to all child components.
+ * This version eliminates ALL known causes of:
+ *   • "Stuck on Verifying Session" infinite loading
+ *   • Ghost dashboard (broken profile / missing role)
+ *   • Double-fire race conditions from getSession + onAuthStateChange
  *
- * SECURITY NOTES:
- * - `loading` stays true until BOTH the session AND profile fetch complete.
- *   This prevents protected pages from rendering before auth is verified.
- * - Session changes are handled via onAuthStateChange to catch token refresh,
- *   sign-out, and expiry events.
- * - Role is read from the `profiles` table (server-side) — NOT from the JWT
- *   metadata — to prevent client-side role manipulation.
+ * DESIGN RULES:
+ *   1. `loading` starts TRUE and goes FALSE exactly ONCE on mount.
+ *      It is NEVER set back to TRUE after that (except during signOut).
+ *   2. SignOut has a 3-second hard timeout — it WILL complete no matter what.
+ *   3. Profile fetch has its own timeout — never hangs.
+ *   4. onAuthStateChange SKIPS the INITIAL_SESSION event (handled by getSession).
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -47,54 +48,84 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = useCallback(async (userId: string) => {
+  // Track whether initial load has completed — prevents re-setting loading to true
+  const initialLoadDone = useRef(false);
+
+  /**
+   * Fetch profile with a hard 5-second timeout.
+   * Returns the profile or null — NEVER throws, NEVER hangs.
+   */
+  const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+
       const { data, error } = await supabase
         .from("profiles")
         .select("id, full_name, email, phone, role, avatar_url")
         .eq("id", userId)
-        .single();
-      // A PGRST116 error means "no rows" — possible if DB trigger didn't run yet.
-      // In that case, clear the profile but do NOT throw — keeps the user logged in.
-      if (error && error.code !== "PGRST116") throw error;
-      setProfile(data as Profile ?? null);
-    } catch {
-      // Profile fetch failure should not lock the user out — only clear the profile
-      setProfile(null);
-    } finally {
-      // Always ensure loading is cleared even if something unexpected happens
-      setLoading(false);
+        .single()
+        .abortSignal(controller.signal);
+
+      clearTimeout(timeout);
+
+      if (error && error.code !== "PGRST116") {
+        console.error("[Auth] Profile fetch error:", error.message);
+        return null;
+      }
+      return (data as Profile) ?? null;
+    } catch (err: any) {
+      // AbortError = timeout, network error, etc.
+      console.error("[Auth] Profile fetch failed:", err?.message || err);
+      return null;
     }
   }, []);
 
+  // ── MOUNT: single initialization ──────────────────────────────────────────
   useEffect(() => {
     let mounted = true;
 
-    // ── Safety net: force-clear loading after 8 s to prevent infinite spinner
-    //    (e.g., network timeout, missing profile row for new expert accounts)
+    // Hard safety net: no matter what happens, loading WILL be false after 6 seconds
     const safetyTimer = setTimeout(() => {
-      if (mounted) setLoading(false);
-    }, 8000);
-
-    // ── 1. Get the initial session on mount ────────────────────────────────
-    supabase.auth.getSession().then(async ({ data: { session: initialSession } }) => {
-      if (!mounted) return;
-      setSession(initialSession);
-      setUser(initialSession?.user ?? null);
-      if (initialSession?.user) {
-        await fetchProfile(initialSession.user.id);
-      } else {
+      if (mounted && !initialLoadDone.current) {
+        console.warn("[Auth] Safety timer fired — forcing loading=false");
+        initialLoadDone.current = true;
         setLoading(false);
       }
-    }).catch(() => {
-      if (mounted) setLoading(false);
-    });
+    }, 6000);
 
-    // ── 2. Subscribe to auth state changes ────────────────────────────────
-    // This fires on: sign-in, sign-out, token refresh, session expiry
+    // 1. Get the initial session
+    const init = async () => {
+      try {
+        const { data: { session: s } } = await supabase.auth.getSession();
+        if (!mounted) return;
+
+        setSession(s);
+        setUser(s?.user ?? null);
+
+        if (s?.user) {
+          const p = await fetchProfile(s.user.id);
+          if (!mounted) return;
+          setProfile(p);
+        }
+      } catch (err) {
+        console.error("[Auth] Init error:", err);
+      } finally {
+        if (mounted) {
+          initialLoadDone.current = true;
+          setLoading(false);
+        }
+      }
+    };
+
+    init();
+
+    // 2. Listen for auth changes (sign-in, sign-out, token refresh)
+    //    SKIP the INITIAL_SESSION event — we already handled it above.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, changedSession) => {
         if (!mounted) return;
+        if (event === "INITIAL_SESSION") return; // Already handled by getSession
 
         if (import.meta.env.DEV) {
           console.log("[Auth] event:", event);
@@ -104,11 +135,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(changedSession?.user ?? null);
 
         if (changedSession?.user) {
-          // Fetch fresh profile on every auth event (fetchProfile clears loading itself)
-          await fetchProfile(changedSession.user.id);
+          const p = await fetchProfile(changedSession.user.id);
+          if (mounted) setProfile(p);
         } else {
           setProfile(null);
-          setLoading(false);
         }
       }
     );
@@ -120,27 +150,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [fetchProfile]);
 
-  const handleSignOut = async () => {
+  /**
+   * Sign out with a HARD 3-SECOND TIMEOUT.
+   * No matter what Supabase does, the user WILL be logged out locally.
+   */
+  const handleSignOut = useCallback(async () => {
     setLoading(true);
-    try {
-      await supabase.auth.signOut();
-    } catch (error) {
-      console.error("Sign out error:", error);
-    } finally {
-      setSession(null);
-      setUser(null);
-      setProfile(null);
-      setLoading(false);
-    }
-  };
 
-  const refreshProfile = async () => {
-    if (user) await fetchProfile(user.id);
-  };
+    // Race: Supabase signOut vs 3-second timeout
+    try {
+      await Promise.race([
+        supabase.auth.signOut(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Sign-out timeout")), 3000)),
+      ]);
+    } catch (err) {
+      console.error("[Auth] Sign-out error (forced local cleanup):", err);
+    }
+
+    // ALWAYS clear local state — this is the critical part
+    setSession(null);
+    setUser(null);
+    setProfile(null);
+    setLoading(false);
+  }, []);
+
+  const refreshProfile = useCallback(async () => {
+    if (user) {
+      const p = await fetchProfile(user.id);
+      setProfile(p);
+    }
+  }, [user, fetchProfile]);
 
   /**
    * Returns true if the authenticated user has at least one of the given roles.
-   * Always returns false while loading or unauthenticated.
    */
   const hasRole = useCallback(
     (roles: UserRole[]): boolean => {

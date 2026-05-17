@@ -1,13 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { Search, ThumbsUp, ThumbsDown, BookOpen, Filter, ChevronRight, ChevronLeft, X, Send, Star } from "lucide-react";
 import { toast } from "sonner";
-import { carouselSlides, categories, allTags, articles, featuredGuides, popularTopics, topExperts } from "../data/expertData";
+import { useAuth } from "../context/AuthContext";
+import { carouselSlides, categories, allTags, featuredGuides, popularTopics, topExperts } from "../data/expertData";
 
-type Article = typeof articles[0];
+type Article = any; // Will match GNews API response structure
 type Guide = typeof featuredGuides[0];
 type Topic = typeof popularTopics[0];
 
 export default function ExpertKnowledge() {
+  const { profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activeTag, setActiveTag] = useState<string | null>(null);
@@ -17,10 +19,38 @@ export default function ExpertKnowledge() {
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [selectedGuide, setSelectedGuide] = useState<Guide | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
-  const [likes, setLikes] = useState<Record<number, number>>(() => Object.fromEntries(articles.map(a => [a.id, a.likes])));
-  const [dislikes, setDislikes] = useState<Record<number, number>>(() => Object.fromEntries(articles.map(a => [a.id, a.dislikes])));
-  const [voted, setVoted] = useState<Record<number, "up" | "down" | null>>({});
   const [showAll, setShowAll] = useState(false);
+
+  // Live News State
+  const [liveArticles, setLiveArticles] = useState<any[]>([]);
+  const [isLoadingNews, setIsLoadingNews] = useState(true);
+
+  useEffect(() => {
+    const fetchNews = async () => {
+      setIsLoadingNews(true);
+      try {
+        const apiKey = import.meta.env.VITE_GNEWS_API_KEY;
+        let query = "agriculture OR farming";
+        if (profile?.role === "buyer") query = "business OR retail OR market";
+        if (profile?.role === "admin" || profile?.role === "expert") query = "agriculture OR business";
+
+        const res = await fetch(`https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&lang=en&max=8&apikey=${apiKey}`);
+        const data = await res.json();
+        
+        if (data.articles) {
+          setLiveArticles(data.articles);
+        }
+      } catch (err) {
+        console.error("News fetch error:", err);
+      } finally {
+        setIsLoadingNews(false);
+      }
+    };
+    
+    if (profile?.role) {
+      fetchNews();
+    }
+  }, [profile?.role]);
 
   const nextSlide = useCallback(() => setCarouselIdx(i => (i + 1) % carouselSlides.length), []);
   const prevSlide = () => setCarouselIdx(i => (i - 1 + carouselSlides.length) % carouselSlides.length);
@@ -29,21 +59,6 @@ export default function ExpertKnowledge() {
     const t = setInterval(nextSlide, 8000);
     return () => clearInterval(t);
   }, [nextSlide]);
-
-  const handleLike = (id: number) => {
-    if (voted[id] === "up") return;
-    setLikes(l => ({ ...l, [id]: l[id] + 1 }));
-    if (voted[id] === "down") setDislikes(d => ({ ...d, [id]: Math.max(0, d[id] - 1) }));
-    setVoted(v => ({ ...v, [id]: "up" }));
-    toast.success("Thanks for your feedback!");
-  };
-  const handleDislike = (id: number) => {
-    if (voted[id] === "down") return;
-    setDislikes(d => ({ ...d, [id]: d[id] + 1 }));
-    if (voted[id] === "up") setLikes(l => ({ ...l, [id]: Math.max(0, l[id] - 1) }));
-    setVoted(v => ({ ...v, [id]: "down" }));
-    toast.info("Feedback noted.");
-  };
 
   const [commQuestions, setCommQuestions] = useState([
     {
@@ -100,11 +115,12 @@ export default function ExpertKnowledge() {
     setReplyingTo(null);
   };
 
-  const filtered = articles.filter(a => {
-    const matchCat = !activeCategory || a.category === activeCategory;
-    const matchTag = !activeTag || a.tags.includes(activeTag);
-    const matchSearch = !searchQuery || a.title.toLowerCase().includes(searchQuery.toLowerCase()) || a.category.toLowerCase().includes(searchQuery.toLowerCase()) || a.author.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchCat && matchTag && matchSearch;
+  const filtered = liveArticles.filter(a => {
+    const searchString = `${a.title || ""} ${a.description || ""} ${a.source?.name || ""}`.toLowerCase();
+    const matchSearch = !searchQuery || searchString.includes(searchQuery.toLowerCase());
+    const matchCat = !activeCategory || searchString.includes(activeCategory.toLowerCase());
+    const matchTag = !activeTag || searchString.includes(activeTag.toLowerCase());
+    return matchSearch && matchCat && matchTag;
   });
   const displayed = showAll ? filtered : filtered.slice(0, 4);
 
@@ -209,29 +225,32 @@ export default function ExpertKnowledge() {
           {/* Articles */}
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-white">Latest Articles <span className="text-emerald-400 text-sm font-normal">({filtered.length})</span></h2>
+              <h2 className="text-xl font-bold text-white">
+                {profile?.role === "buyer" ? "Market & Business Intelligence" : "Agricultural Insights"} 
+                <span className="text-emerald-400 text-sm font-normal ml-2">({filtered.length} live articles)</span>
+              </h2>
               <button onClick={() => setShowAll(s => !s)} className="text-emerald-400 hover:text-white text-sm flex items-center gap-1 transition-colors">{showAll ? "Show less" : "View all"}<ChevronRight className="w-4 h-4" /></button>
             </div>
-            {displayed.length === 0 ? (
+            {isLoadingNews ? (
+               <div className="text-center py-12 text-emerald-400">
+                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mx-auto mb-3"></div>
+                 <p>Fetching live news from GNews...</p>
+               </div>
+            ) : displayed.length === 0 ? (
               <div className="text-center py-12 text-emerald-400"><BookOpen className="w-10 h-10 mx-auto mb-3 opacity-50" /><p>No articles match your filters.</p><button onClick={() => { setActiveCategory(null); setActiveTag(null); setSearchQuery(""); }} className="mt-3 text-emerald-300 underline text-sm">Clear filters</button></div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {displayed.map(article => (
-                  <div key={article.id} onClick={() => setSelectedArticle(article)} className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden hover:bg-white/10 hover:border-emerald-500/40 group cursor-pointer transition-all">
+                {displayed.map((article, idx) => (
+                  <div key={idx} onClick={() => window.open(article.url, "_blank")} className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden hover:bg-white/10 hover:border-emerald-500/40 group cursor-pointer transition-all">
                     <div className="h-40 bg-cover bg-center relative" style={{ backgroundImage: `url(${article.image})` }}>
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-                      <span className="absolute top-3 left-3 px-2 py-0.5 bg-emerald-700/80 backdrop-blur-sm text-emerald-200 text-xs rounded-md font-medium">{article.category}</span>
-                      <div className="absolute bottom-3 left-3 flex gap-0.5">{[...Array(5)].map((_, i) => <span key={i} className={i < article.rating ? "text-yellow-400 text-sm" : "text-gray-600 text-sm"}>★</span>)}</div>
+                      <span className="absolute top-3 left-3 px-2 py-0.5 bg-emerald-700/80 backdrop-blur-sm text-emerald-200 text-xs rounded-md font-medium">{article.source.name}</span>
                     </div>
                     <div className="p-4">
-                      <h4 className="font-semibold text-white mb-1 group-hover:text-emerald-300 transition-colors text-sm leading-tight">{article.title}</h4>
-                      <p className="text-emerald-400 text-xs mb-3">{article.author} · {article.date}</p>
+                      <h4 className="font-semibold text-white mb-1 group-hover:text-emerald-300 transition-colors text-sm leading-tight line-clamp-2">{article.title}</h4>
+                      <p className="text-emerald-400 text-xs mb-3">{new Date(article.publishedAt).toLocaleDateString()}</p>
                       <div className="flex items-center justify-between" onClick={e => e.stopPropagation()}>
-                        <span className="text-emerald-400 text-xs">Click to read →</span>
-                        <div className="flex gap-2">
-                          <button onClick={() => handleLike(article.id)} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-all ${voted[article.id] === "up" ? "bg-emerald-600 text-white" : "hover:bg-emerald-700/40 text-emerald-300"}`}><ThumbsUp className="w-3.5 h-3.5" />{likes[article.id]}</button>
-                          <button onClick={() => handleDislike(article.id)} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-all ${voted[article.id] === "down" ? "bg-red-700 text-white" : "hover:bg-red-700/40 text-red-400"}`}><ThumbsDown className="w-3.5 h-3.5" />{dislikes[article.id]}</button>
-                        </div>
+                        <span className="text-emerald-400 text-xs flex items-center gap-1">Read on {article.source.name} <ChevronRight className="w-3 h-3" /></span>
                       </div>
                     </div>
                   </div>

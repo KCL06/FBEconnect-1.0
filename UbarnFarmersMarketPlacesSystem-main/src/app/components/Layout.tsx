@@ -199,11 +199,9 @@ export default function Layout() {
             {!isCollapsed && <span className="text-sm font-medium">{t('settings')}</span>}
           </Link>
           {!isCollapsed && (
-            <div className="flex items-center justify-around mt-3 pt-3 border-t border-emerald-700/30">
-              <Link to="/" className="text-emerald-400 hover:text-white text-xs transition-colors">Home</Link>
-              <Link to="/app/notification" className="text-emerald-400 hover:text-white text-xs transition-colors">Alerts</Link>
-              <button onClick={handleLogout} className="flex items-center gap-1 text-red-400 hover:text-red-300 text-xs transition-colors">
-                <LogOut className="w-3 h-3" />{t('log_out')}
+            <div className="flex justify-center mt-3 pt-3 border-t border-emerald-700/30">
+              <button onClick={handleLogout} className="flex items-center gap-2 text-red-400 hover:text-red-300 text-xs transition-colors font-medium">
+                <LogOut className="w-4 h-4" />{t('log_out')}
               </button>
             </div>
           )}
@@ -216,9 +214,7 @@ export default function Layout() {
         {/* Desktop Top Header */}
         <div className="hidden lg:flex sticky top-0 bg-emerald-900/80 backdrop-blur-md border-b border-emerald-700/50 px-8 py-3 z-10 items-center justify-between shadow-sm">
           <div className="flex items-center gap-2">
-            <Link to="/" className="text-emerald-400 hover:text-white text-sm transition-colors">Home</Link>
-            <ChevronRight className="w-3 h-3 text-emerald-600" />
-            <span className="text-white text-sm font-semibold">{pageTitle}</span>
+            <span className="text-white text-lg font-bold tracking-tight">{pageTitle}</span>
           </div>
           <div className="flex items-center gap-3">
             <nav className="flex items-center gap-1">

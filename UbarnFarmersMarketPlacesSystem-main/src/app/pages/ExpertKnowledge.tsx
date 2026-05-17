@@ -39,6 +39,9 @@ export default function ExpertKnowledge() {
         
         if (data.articles) {
           setLiveArticles(data.articles);
+        } else if (data.errors) {
+          toast.error(`News API Error: ${data.errors[0]}`);
+          console.error("GNews Error:", data.errors);
         }
       } catch (err) {
         console.error("News fetch error:", err);

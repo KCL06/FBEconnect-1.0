@@ -161,29 +161,6 @@ export default function Dashboard() {
 
   const { signOut } = useAuth();
 
-  // ── Ghost Account Fallback ────────────────────────────────────────────────
-  if (!isLoading && (!profile || !profile.role)) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] p-8 text-center">
-        <div className="bg-red-900/20 border border-red-500/30 p-8 rounded-2xl max-w-md backdrop-blur-sm shadow-xl">
-          <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl">⚠️</span>
-          </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Profile Incomplete</h2>
-          <p className="text-red-200/80 mb-6 text-sm leading-relaxed">
-            It looks like your account setup was interrupted. To fix this, please log out and try registering again to complete your profile.
-          </p>
-          <button
-            onClick={() => signOut()}
-            className="bg-red-600 hover:bg-red-500 text-white px-6 py-2.5 rounded-xl font-bold transition-all w-full shadow-lg"
-          >
-            Log Out Now
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="p-4 md:p-8">
       {/* Header */}

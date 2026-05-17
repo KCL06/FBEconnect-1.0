@@ -46,8 +46,9 @@ export default function ProtectedRoute() {
 
   // ── Step 3: Global Ghost Account Interceptor ─────────────────────────────
   // If the user has an auth token but their database profile failed to create
-  // (e.g. database trigger failure), DO NOT let them into the Layout.
-  if (session && (!profile || !profile.role)) {
+  // or they have an invalid role, DO NOT let them into the Layout.
+  const validRoles = ["farmer", "buyer", "expert", "admin"];
+  if (session && (!profile || !profile.role || !validRoles.includes(profile.role))) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-black/90 text-center p-8">
         <div className="bg-red-900/20 border border-red-500/30 p-8 rounded-2xl max-w-md backdrop-blur-sm shadow-xl">

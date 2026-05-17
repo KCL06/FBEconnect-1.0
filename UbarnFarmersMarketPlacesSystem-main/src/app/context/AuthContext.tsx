@@ -122,8 +122,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const handleSignOut = async () => {
     setLoading(true);
-    await supabase.auth.signOut();
-    // State will be cleared by the onAuthStateChange listener
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error("Sign out error:", error);
+    } finally {
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+      setLoading(false);
+    }
   };
 
   const refreshProfile = async () => {

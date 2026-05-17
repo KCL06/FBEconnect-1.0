@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Calendar, Clock, Video, User, Plus, X, Star, Mic, MicOff, VideoOff, PhoneOff } from "lucide-react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router";
 
 type Consultation = {
   id: number;
@@ -73,13 +74,10 @@ const availableExperts = [
 
 export default function Consultations() {
   const [consultations, setConsultations] = useState(initialConsultations);
-  const [callModal, setCallModal] = useState<Consultation | null>(null);
+  const navigate = useNavigate();
   const [rescheduleModal, setRescheduleModal] = useState<Consultation | null>(null);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [selectedExpert, setSelectedExpert] = useState<typeof availableExperts[0] | null>(null);
-  const [inCall, setInCall] = useState(false);
-  const [micOn, setMicOn] = useState(true);
-  const [camOn, setCamOn] = useState(true);
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
   const [bookDate, setBookDate] = useState("");
@@ -92,23 +90,7 @@ export default function Consultations() {
     .filter(c => c.status === "Completed")
     .reduce((acc, c) => acc + parseInt(c.duration), 0) / 60;
 
-  const handleJoinCall = (c: Consultation) => {
-    setCallModal(c);
-    setInCall(false);
-    setMicOn(true);
-    setCamOn(true);
-  };
 
-  const handleStartCall = () => {
-    setInCall(true);
-    toast.success("You've joined the video call!");
-  };
-
-  const handleEndCall = () => {
-    setCallModal(null);
-    setInCall(false);
-    toast.info("Call ended. Duration: 00:05:23");
-  };
 
   const handleReschedule = () => {
     if (!newDate || !newTime) {
@@ -232,7 +214,7 @@ export default function Consultations() {
               {consultation.status === "Upcoming" && (
                 <div className="flex gap-2">
                   <button
-                    onClick={() => handleJoinCall(consultation)}
+                    onClick={() => navigate(`/app/call/consultation-${consultation.id}`)}
                     className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm transition-all flex items-center justify-center gap-2"
                   >
                     <Video className="w-4 h-4" />
@@ -301,101 +283,7 @@ export default function Consultations() {
         </div>
       </div>
 
-      {/* Video Call Modal */}
-      {callModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden">
-            {/* Video Area */}
-            <div className="relative bg-gradient-to-br from-gray-800 to-gray-900 h-72 flex items-center justify-center">
-              {!inCall ? (
-                <div className="text-center">
-                  <div className="text-8xl mb-4">{callModal.avatar}</div>
-                  <h3 className="text-white text-xl font-bold">{callModal.expert}</h3>
-                  <p className="text-gray-400">{callModal.specialty}</p>
-                  <p className="text-emerald-400 mt-2 text-sm">Connecting...</p>
-                </div>
-              ) : (
-                <div className="w-full h-full relative flex items-center justify-center bg-emerald-900/20">
-                  <div className="text-center">
-                    <div className="text-8xl mb-2">{callModal.avatar}</div>
-                    <div className="flex items-center gap-2 justify-center">
-                      <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                      <span className="text-emerald-400 text-sm font-medium">Live</span>
-                    </div>
-                  </div>
-                  {/* Self view */}
-                  <div className="absolute bottom-4 right-4 w-24 h-16 bg-gray-700 rounded-lg flex items-center justify-center border-2 border-emerald-600">
-                    {camOn ? (
-                      <User className="w-8 h-8 text-gray-400" />
-                    ) : (
-                      <VideoOff className="w-8 h-8 text-gray-500" />
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
 
-            {/* Controls */}
-            <div className="p-6 bg-gray-800">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <p className="text-white font-semibold">{callModal.expert}</p>
-                  <p className="text-gray-400 text-sm">{inCall ? "In Call" : "Waiting to connect"}</p>
-                </div>
-                {inCall && (
-                  <span className="text-emerald-400 text-sm font-mono bg-emerald-900/30 px-3 py-1 rounded">
-                    00:05:23
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center justify-center gap-4">
-                {!inCall ? (
-                  <>
-                    <button
-                      onClick={handleStartCall}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-xl font-semibold transition-all flex items-center gap-2"
-                    >
-                      <Video className="w-5 h-5" />
-                      Join Now
-                    </button>
-                    <button
-                      onClick={() => setCallModal(null)}
-                      className="bg-gray-600 hover:bg-gray-700 text-white px-8 py-3 rounded-xl font-semibold transition-all"
-                    >
-                      Cancel
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => setMicOn(!micOn)}
-                      className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
-                        micOn ? "bg-white/20 hover:bg-white/30" : "bg-red-600 hover:bg-red-700"
-                      }`}
-                    >
-                      {micOn ? <Mic className="w-6 h-6 text-white" /> : <MicOff className="w-6 h-6 text-white" />}
-                    </button>
-                    <button
-                      onClick={handleEndCall}
-                      className="w-16 h-16 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center transition-all"
-                    >
-                      <PhoneOff className="w-7 h-7 text-white" />
-                    </button>
-                    <button
-                      onClick={() => setCamOn(!camOn)}
-                      className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
-                        camOn ? "bg-white/20 hover:bg-white/30" : "bg-red-600 hover:bg-red-700"
-                      }`}
-                    >
-                      {camOn ? <Video className="w-6 h-6 text-white" /> : <VideoOff className="w-6 h-6 text-white" />}
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Reschedule Modal */}
       {rescheduleModal && (

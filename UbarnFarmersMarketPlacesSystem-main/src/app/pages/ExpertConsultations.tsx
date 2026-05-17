@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import {
   CalendarCheck, Clock, Video, Phone, CheckCircle2, XCircle,
   Calendar, User, Star, MessageSquare, ChevronDown, ChevronUp,
@@ -36,6 +37,7 @@ const STATUS_STYLES: Record<RequestStatus, { bg: string; text: string; label: st
 };
 
 export default function ExpertConsultations() {
+  const navigate = useNavigate();
   const [requests, setRequests] = useState<ConsultationRequest[]>(initialRequests);
   const [activeTab, setActiveTab] = useState<"pending" | "upcoming" | "completed">("pending");
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -268,7 +270,7 @@ export default function ExpertConsultations() {
                     {(req.status === "accepted" || req.status === "rescheduled") && (
                       <>
                         <button
-                          onClick={() => toast.success("Video call link copied to clipboard!")}
+                          onClick={() => navigate(`/app/call/consultation-${req.id}`)}
                           className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all"
                         >
                           <Video className="w-4 h-4" /> Join Session

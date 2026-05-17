@@ -102,6 +102,7 @@ export default function OrderTracking() {
             
             return {
               id: o.id,
+              shortId: o.id.slice(0, 8).toUpperCase(),
               product: productNames || "Multiple Items",
               items: o.items,
               totalAmount: o.total_amount,
@@ -251,7 +252,7 @@ export default function OrderTracking() {
                         {order.status}
                       </span>
                     </div>
-                    <p className="text-gray-400 text-xs mb-1 font-mono">ID: {order.id}</p>
+                    <p className="text-gray-400 text-xs mb-1 font-mono">ID: {order.shortId}</p>
                     <p className="text-emerald-300 text-sm">Quantity: {order.quantity}</p>
                   </div>
                   <div className="flex gap-2">
@@ -359,7 +360,7 @@ export default function OrderTracking() {
               </button>
             </div>
             <div className="bg-white/5 rounded-xl p-4 mb-6">
-              <p className="text-emerald-300 text-sm mb-1 font-mono text-xs">Order: {contactModal.id}</p>
+              <p className="text-emerald-300 text-sm mb-1 font-mono text-xs">Order: {contactModal.shortId}</p>
               <p className="text-white font-bold text-lg">{contactModal.buyer}</p>
               <div className="flex items-center gap-2 mt-3">
                 <Phone className="w-5 h-5 text-emerald-400" />
@@ -392,7 +393,7 @@ export default function OrderTracking() {
               </button>
             </div>
             <p className="text-gray-300 mb-6 text-sm">
-              Order <span className="text-white font-semibold font-mono text-xs block truncate">{updateModal.id}</span>
+              Order <span className="text-white font-semibold font-mono text-xs block truncate">{updateModal.shortId}</span>
             </p>
             <div className="space-y-3">
               {(["pending", "confirmed", "shipped", "delivered"] as OrderStatus[]).map((status) => (
@@ -430,7 +431,7 @@ export default function OrderTracking() {
             <div className="space-y-4 mb-6">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Order ID:</span>
-                <span className="font-mono font-medium">{receiptModal.id}</span>
+                <span className="font-mono font-medium">{receiptModal.shortId}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Date & Time:</span>

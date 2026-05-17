@@ -408,7 +408,7 @@ export default function AdminDashboard() {
               <tbody>
                 {transactions.map((t) => (
                   <tr key={t.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                    <td className="p-4 text-white font-mono text-xs">{t.id?.slice(0, 8)}...</td>
+                    <td className="p-4 text-white font-mono text-xs font-bold">{t.id?.slice(0, 8).toUpperCase()}</td>
                     <td className="p-4 text-white">{t.profiles?.full_name || "Unknown"}</td>
                     <td className="p-4 text-emerald-300 font-medium">KES {t.total_amount?.toLocaleString()}</td>
                     <td className="p-4">

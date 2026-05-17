@@ -13,9 +13,7 @@ import ErrorBoundary from "./app/components/ErrorBoundary.tsx";
  *                       fallback instead of a blank screen or stack trace
  */
 createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
-  </StrictMode>
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>
 );

@@ -52,22 +52,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const initialLoadDone = useRef(false);
 
   /**
-   * Fetch profile with a hard 5-second timeout.
-   * Returns the profile or null — NEVER throws, NEVER hangs.
+   * Fetch profile — simple, reliable, no AbortController overhead.
+   * Returns null on any error; never throws, never hangs.
    */
   const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
-
       const { data, error } = await supabase
         .from("profiles")
         .select("id, full_name, email, phone, role, avatar_url")
         .eq("id", userId)
-        .single()
-        .abortSignal(controller.signal);
-
-      clearTimeout(timeout);
+        .single();
 
       if (error && error.code !== "PGRST116") {
         console.error("[Auth] Profile fetch error:", error.message);
@@ -75,7 +69,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return (data as Profile) ?? null;
     } catch (err: any) {
-      // AbortError = timeout, network error, etc.
       console.error("[Auth] Profile fetch failed:", err?.message || err);
       return null;
     }

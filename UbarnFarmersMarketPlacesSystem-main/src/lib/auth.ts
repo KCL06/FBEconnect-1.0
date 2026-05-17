@@ -44,6 +44,13 @@ export async function signUp(
     },
   });
   if (error) throw error;
+
+  // ── CRITICAL: Force sign-out after account creation ──────────────────────
+  // If the Supabase project has "Confirm email" disabled, signUp() auto-logs
+  // the user in. We MUST clear that session so the user is redirected to the
+  // login page and enters their credentials manually.
+  await supabase.auth.signOut();
+
   return data;
 }
 

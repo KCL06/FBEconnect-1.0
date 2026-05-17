@@ -5,6 +5,7 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { toast } from "sonner";
 import { signUp, saveExpertProfile } from "../../lib/auth";
+import { supabase } from "../../lib/supabase";
 import { validateEmail, validatePassword, passwordsMatch, validatePhone, validateName, validateYearsExperience } from "../../utils/validation";
 import { validateDocumentUpload, validateImageUpload } from "../../utils/fileValidation";
 
@@ -82,6 +83,14 @@ export default function RegisterExpert() {
     try {
       const data = await signUp(formData.email, formData.password, formData.fullName, "expert");
       if (data.user) {
+        // Explicitly upsert the profile row to guarantee role is saved
+        await supabase.from("profiles").upsert({
+          id: data.user.id,
+          full_name: formData.fullName,
+          email: formData.email.trim().toLowerCase(),
+          role: "expert",
+        }, { onConflict: "id" });
+
         await saveExpertProfile(data.user.id, {
           expertise: formData.expertise,
           years_experience: parseInt(formData.yearsExperience) || 0,
@@ -89,7 +98,9 @@ export default function RegisterExpert() {
           portfolio: formData.portfolio,
         });
       }
-      toast.success("Account created! Your profile will be reviewed before activation.");
+      // Sign out AFTER all saves, then redirect to login
+      await supabase.auth.signOut();
+      toast.success("Account created! Please log in with your credentials.");
       setTimeout(() => navigate("/login"), 1500);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Registration failed";

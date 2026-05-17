@@ -4,6 +4,7 @@ import { ChevronRight, ChevronLeft, CheckCircle, Upload, Camera } from "lucide-r
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { toast } from "sonner";
+import { supabase } from "../../lib/supabase";
 import { signUp, saveFarmerProfile, saveFarmerVerification } from "../../lib/auth";
 import {
   validateEmail,
@@ -121,6 +122,14 @@ export default function RegisterFarmer() {
     try {
       const data = await signUp(formData.email, formData.password, formData.fullName, "farmer");
       if (data.user) {
+        // Explicitly upsert the profile row in case the DB trigger hasn't fired yet
+        await supabase.from("profiles").upsert({
+          id: data.user.id,
+          full_name: formData.fullName,
+          email: formData.email.trim().toLowerCase(),
+          role: "farmer",
+        }, { onConflict: "id" });
+
         await saveFarmerProfile(data.user.id, {
           farm_name: formData.farmName,
           farm_location: formData.farmLocation,
@@ -131,7 +140,9 @@ export default function RegisterFarmer() {
           national_id: formData.nationalId,
         });
       }
-      toast.success("Account created! Check your email to verify, then log in.");
+      // Sign out AFTER all saves are done, then redirect to login
+      await supabase.auth.signOut();
+      toast.success("Account created! Please log in with your credentials.");
       setTimeout(() => navigate("/login"), 1500);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Registration failed";

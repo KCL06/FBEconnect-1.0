@@ -5,6 +5,7 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { toast } from "sonner";
 import { signUp, saveBuyerProfile } from "../../lib/auth";
+import { supabase } from "../../lib/supabase";
 import { validateEmail, validatePassword, passwordsMatch, validatePhone, validateName } from "../../utils/validation";
 import { validateDocumentUpload } from "../../utils/fileValidation";
 
@@ -78,6 +79,14 @@ export default function RegisterBuyer() {
     try {
       const data = await signUp(formData.email, formData.password, formData.fullName, "buyer");
       if (data.user) {
+        // Explicitly upsert the profile row to guarantee role is saved
+        await supabase.from("profiles").upsert({
+          id: data.user.id,
+          full_name: formData.fullName,
+          email: formData.email.trim().toLowerCase(),
+          role: "buyer",
+        }, { onConflict: "id" });
+
         await saveBuyerProfile(data.user.id, {
           location: formData.location,
           preferred_products: formData.preferredProducts.join(", "),
@@ -85,7 +94,9 @@ export default function RegisterBuyer() {
           account_type: formData.accountType,
         });
       }
-      toast.success("Account created! Check your email to verify, then log in.");
+      // Sign out AFTER all saves, then redirect to login
+      await supabase.auth.signOut();
+      toast.success("Account created! Please log in with your credentials.");
       setTimeout(() => navigate("/login"), 1500);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Registration failed";

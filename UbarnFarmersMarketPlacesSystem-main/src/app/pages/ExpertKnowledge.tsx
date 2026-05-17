@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Search, ThumbsUp, ThumbsDown, BookOpen, Filter, ChevronRight, ChevronLeft, X, Send, Star } from "lucide-react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router";
 import { useAuth } from "../context/AuthContext";
 import { carouselSlides, categories, allTags, featuredGuides, popularTopics, topExperts } from "../data/expertData";
 
@@ -10,6 +11,7 @@ type Topic = typeof popularTopics[0];
 
 export default function ExpertKnowledge() {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activeTag, setActiveTag] = useState<string | null>(null);
@@ -25,35 +27,43 @@ export default function ExpertKnowledge() {
   const [liveArticles, setLiveArticles] = useState<any[]>([]);
   const [isLoadingNews, setIsLoadingNews] = useState(true);
 
-  useEffect(() => {
-    const fetchNews = async () => {
-      setIsLoadingNews(true);
-      try {
-        const apiKey = import.meta.env.VITE_GNEWS_API_KEY;
-        let query = "agriculture OR farming";
-        if (profile?.role === "buyer") query = "business OR retail OR market";
-        if (profile?.role === "admin" || profile?.role === "expert") query = "agriculture OR business";
+  const fetchNews = useCallback(async (customSearchTerm = "") => {
+    setIsLoadingNews(true);
+    try {
+      const apiKey = import.meta.env.VITE_GNEWS_API_KEY;
+      let baseQuery = "agriculture OR farming";
+      if (profile?.role === "buyer") baseQuery = "business OR retail OR market";
+      if (profile?.role === "admin" || profile?.role === "expert") baseQuery = "agriculture OR business";
 
-        const res = await fetch(`https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&lang=en&max=8&apikey=${apiKey}`);
-        const data = await res.json();
-        
-        if (data.articles) {
-          setLiveArticles(data.articles);
-        } else if (data.errors) {
-          toast.error(`News API Error: ${data.errors[0]}`);
-          console.error("GNews Error:", data.errors);
+      const finalQuery = customSearchTerm 
+        ? `(${baseQuery}) AND ("${customSearchTerm}")`
+        : baseQuery;
+
+      const res = await fetch(`https://gnews.io/api/v4/search?q=${encodeURIComponent(finalQuery)}&lang=en&max=8&apikey=${apiKey}`);
+      const data = await res.json();
+      
+      if (data.articles) {
+        setLiveArticles(data.articles);
+        if (customSearchTerm) {
+          toast.success(`Found ${data.articles.length} articles for your search.`);
         }
-      } catch (err) {
-        console.error("News fetch error:", err);
-      } finally {
-        setIsLoadingNews(false);
+      } else if (data.errors) {
+        toast.error(`News API Error: ${data.errors[0]}`);
+        console.error("GNews Error:", data.errors);
       }
-    };
-    
+    } catch (err) {
+      console.error("News fetch error:", err);
+      toast.error("Network error while fetching news.");
+    } finally {
+      setIsLoadingNews(false);
+    }
+  }, [profile?.role]);
+
+  useEffect(() => {
     if (profile?.role) {
       fetchNews();
     }
-  }, [profile?.role]);
+  }, [fetchNews, profile?.role]);
 
   const nextSlide = useCallback(() => setCarouselIdx(i => (i + 1) % carouselSlides.length), []);
   const prevSlide = () => setCarouselIdx(i => (i - 1 + carouselSlides.length) % carouselSlides.length);
@@ -118,14 +128,7 @@ export default function ExpertKnowledge() {
     setReplyingTo(null);
   };
 
-  const filtered = liveArticles.filter(a => {
-    const searchString = `${a.title || ""} ${a.description || ""} ${a.source?.name || ""}`.toLowerCase();
-    const matchSearch = !searchQuery || searchString.includes(searchQuery.toLowerCase());
-    const matchCat = !activeCategory || searchString.includes(activeCategory.toLowerCase());
-    const matchTag = !activeTag || searchString.includes(activeTag.toLowerCase());
-    return matchSearch && matchCat && matchTag;
-  });
-  const displayed = showAll ? filtered : filtered.slice(0, 4);
+  const displayed = showAll ? liveArticles : liveArticles.slice(0, 4);
 
   const slide = carouselSlides[carouselIdx];
 
@@ -170,16 +173,19 @@ export default function ExpertKnowledge() {
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-400 w-5 h-5" />
-            <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search articles, guides & topics..." className="w-full pl-12 pr-4 py-3.5 bg-white/10 border border-white/20 text-white placeholder-emerald-300/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400 backdrop-blur-sm" />
+            <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && fetchNews(searchQuery)} placeholder="Search live articles..." className="w-full pl-12 pr-4 py-3.5 bg-white/10 border border-white/20 text-white placeholder-emerald-300/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400 backdrop-blur-sm" />
           </div>
-          <button onClick={() => { setActiveCategory(null); setActiveTag(null); setSearchQuery(""); toast.info("Filters cleared"); }} className="flex items-center gap-2 px-4 py-3 bg-white/10 border border-white/20 text-emerald-200 rounded-xl hover:bg-white/20 transition-all">
-            <Search className="w-4 h-4" /><Filter className="w-4 h-4" />
+          <button onClick={() => fetchNews(searchQuery)} className="px-6 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-500 transition-all shadow-lg">
+            Search
+          </button>
+          <button onClick={() => { setActiveCategory(null); setActiveTag(null); setSearchQuery(""); fetchNews(""); toast.info("Filters cleared"); }} className="flex items-center gap-2 px-4 py-3 bg-white/10 border border-white/20 text-emerald-200 rounded-xl hover:bg-white/20 transition-all" title="Clear Filters">
+            <X className="w-5 h-5" />
           </button>
         </div>
         {(activeCategory || activeTag) && (
-          <div className="flex gap-2 mt-2 flex-wrap">
-            {activeCategory && <span className="flex items-center gap-1 bg-emerald-700/60 text-emerald-200 text-xs px-3 py-1 rounded-full"><span>{activeCategory}</span><button onClick={() => setActiveCategory(null)}><X className="w-3 h-3" /></button></span>}
-            {activeTag && <span className="flex items-center gap-1 bg-emerald-700/60 text-emerald-200 text-xs px-3 py-1 rounded-full"><span>{activeTag}</span><button onClick={() => setActiveTag(null)}><X className="w-3 h-3" /></button></span>}
+          <div className="flex gap-2 mt-3 flex-wrap">
+            {activeCategory && <span className="flex items-center gap-1 bg-emerald-700/60 text-emerald-200 text-xs px-3 py-1 rounded-full"><span>{activeCategory}</span><button onClick={() => { setActiveCategory(null); fetchNews(""); }}><X className="w-3 h-3 hover:text-white" /></button></span>}
+            {activeTag && <span className="flex items-center gap-1 bg-emerald-700/60 text-emerald-200 text-xs px-3 py-1 rounded-full"><span>{activeTag}</span><button onClick={() => { setActiveTag(null); fetchNews(""); }}><X className="w-3 h-3 hover:text-white" /></button></span>}
           </div>
         )}
       </div>
@@ -192,7 +198,12 @@ export default function ExpertKnowledge() {
             <ul className="space-y-1.5">
               {categories.map(cat => (
                 <li key={cat.name}>
-                  <button onClick={() => { setActiveCategory(activeCategory === cat.name ? null : cat.name); setActiveTag(null); toast.success(`Filtering: ${cat.name}`); }} className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all text-sm ${activeCategory === cat.name ? "bg-emerald-600 text-white" : "text-emerald-200 hover:bg-emerald-800/40 hover:text-white"}`}>
+                  <button onClick={() => { 
+                    const isDeactivating = activeCategory === cat.name;
+                    setActiveCategory(isDeactivating ? null : cat.name); 
+                    setActiveTag(null); 
+                    fetchNews(isDeactivating ? "" : cat.name);
+                  }} className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all text-sm ${activeCategory === cat.name ? "bg-emerald-600 text-white" : "text-emerald-200 hover:bg-emerald-800/40 hover:text-white"}`}>
                     <span>{cat.emoji} {cat.name}</span>
                     <span className="w-6 h-6 bg-emerald-700/60 rounded-full flex items-center justify-center text-xs font-semibold">{cat.count}</span>
                   </button>
@@ -205,7 +216,11 @@ export default function ExpertKnowledge() {
             <h3 className="text-lg font-bold text-white mb-4">Browse By Tags</h3>
             <div className="flex flex-wrap gap-2">
               {allTags.map(tag => (
-                <button key={tag} onClick={() => { setActiveTag(activeTag === tag ? null : tag); toast.success(`Tag: ${tag}`); }} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all border ${activeTag === tag ? "bg-emerald-600 text-white border-emerald-500" : "bg-emerald-800/60 hover:bg-emerald-700 text-emerald-200 border-emerald-700/30"}`}>{tag}</button>
+                <button key={tag} onClick={() => { 
+                  const isDeactivating = activeTag === tag;
+                  setActiveTag(isDeactivating ? null : tag); 
+                  fetchNews(isDeactivating ? "" : tag);
+                }} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all border ${activeTag === tag ? "bg-emerald-600 text-white border-emerald-500" : "bg-emerald-800/60 hover:bg-emerald-700 text-emerald-200 border-emerald-700/30"}`}>{tag}</button>
               ))}
             </div>
           </div>
@@ -214,7 +229,7 @@ export default function ExpertKnowledge() {
             <h3 className="text-lg font-bold text-white mb-4">Top Experts</h3>
             <div className="space-y-3">
               {topExperts.map(e => (
-                <button key={e.name} onClick={() => toast.success(`Viewing ${e.name}'s profile`)} className="w-full flex items-center gap-3 hover:bg-white/5 p-1 rounded-lg transition-all text-left">
+                <button key={e.name} onClick={() => navigate("/app/consultations")} className="w-full flex items-center gap-3 hover:bg-white/5 p-1 rounded-lg transition-all text-left">
                   <div className={`w-10 h-10 ${e.color} rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}>{e.name.charAt(0)}</div>
                   <div><p className="text-white text-sm font-semibold">{e.name}</p><p className="text-emerald-400 text-xs">{e.specialty} · {e.articles} articles</p></div>
                 </button>
@@ -230,7 +245,7 @@ export default function ExpertKnowledge() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-white">
                 {profile?.role === "buyer" ? "Market & Business Intelligence" : "Agricultural Insights"} 
-                <span className="text-emerald-400 text-sm font-normal ml-2">({filtered.length} live articles)</span>
+                <span className="text-emerald-400 text-sm font-normal ml-2">({liveArticles.length} live articles)</span>
               </h2>
               <button onClick={() => setShowAll(s => !s)} className="text-emerald-400 hover:text-white text-sm flex items-center gap-1 transition-colors">{showAll ? "Show less" : "View all"}<ChevronRight className="w-4 h-4" /></button>
             </div>
